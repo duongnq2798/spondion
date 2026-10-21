@@ -8,4 +8,4 @@ After Studio reported 100% of its daily allowance, final fixes were made locally
 
 Fresh local evidence is in [final-verification/](final-verification/); logs under `evidence/` and `validation/` are historical Studio exports. Verification used only loopback Anvil 31337 with known disposable accounts and MockUSDC. AI output is deterministic word-count simulation. No paid model, public-chain transaction, user-wallet signature, gas payment or final grant submission occurred.
 
-The production wallet build leaves the escrow address blank and writes disabled. Browser interaction and connected-wallet Mainnet execution have not been validated in the current environment. No independent professional audit has been performed.
+The production wallet build leaves the escrow address blank and writes disabled. A subsequent local [interface redesign](REDESIGN.md) was checked visually in the browser and exercised through the complete local fixture flow. Connected-wallet Mainnet execution remains unvalidated. No independent professional audit has been performed.

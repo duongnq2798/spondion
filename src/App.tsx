@@ -19,6 +19,7 @@
 import { lazy, Suspense, useEffect, useState, useCallback } from "react";
 import WalletView from "./components/WalletView";
 import { type Channel, type Settlement } from "./types";
+import { ArrowRight, ArrowUpRight, BookOpen, Code2, Cpu, FlaskConical, LayoutDashboard, LockKeyhole, ShieldCheck, Wallet } from "lucide-react";
 
 // ── Feature flags ─────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ interface ApiListResponse {
 const fontLink = document.createElement("link");
 fontLink.rel = "stylesheet";
 fontLink.href =
-  "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap";
+  "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap";
 document.head.appendChild(fontLink);
 
 const API = "/api";
@@ -142,76 +143,71 @@ export default function App() {
     return () => clearInterval(id);
   }, [refreshDemoState]);
 
-  const visibleTabs: Tab[] = ENABLE_LOCAL_DEMO ? ["demo", "wallet"] : ["wallet"];
-
   return (
-    <div className="min-h-dvh bg-slate-50" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1
-              className="text-xl font-bold text-slate-900"
-              style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}
-            >
-              Spondion
-            </h1>
-            <p className="text-xs text-slate-500 -mt-0.5">
-              Prepaid Escrow{ENABLE_LOCAL_DEMO ? " · Local Demo" : " · Wallet Mode"}
-            </p>
-          </div>
-          {ENABLE_LOCAL_DEMO && (
-            <div className="flex items-center gap-2">
-              <StatusDot loading={demoState.loading} error={demoState.error} ready={demoState.nodeReady} />
-              <span className="text-xs text-slate-500 tabular-nums">
-                {demoState.channels.length} ch
-              </span>
-            </div>
-          )}
+    <div className="spondion-app">
+      <a className="skip-link" href="#workspace">Skip to workspace</a>
+      <aside className="app-sidebar" aria-label="Main navigation">
+        <a href="#" className="brand" aria-label="Spondion home">
+          <BrandMark />
+          <span className="brand-name">spondion<span className="brand-period">.</span></span>
+        </a>
+        <div className="sidebar-workspace"><span className="workspace-monogram">S</span><span>Developer workspace<small>Prepaid payments</small></span></div>
+        <div className="sidebar-label">WORKSPACE</div>
+        <nav className="primary-nav">
+          <button className={`nav-item ${tab === "wallet" ? "active" : ""}`} onClick={() => setTab("wallet")} aria-current={tab === "wallet" ? "page" : undefined} title="Overview"><LayoutDashboard size={18}/><span>Overview</span><span className="nav-active-mark" /></button>
+          {ENABLE_LOCAL_DEMO && <button className={`nav-item ${tab === "demo" ? "active" : ""}`} onClick={() => setTab("demo")} aria-current={tab === "demo" ? "page" : undefined} title="Local sandbox"><FlaskConical size={18}/><span>Local sandbox</span></button>}
+        </nav>
+        <div className="sidebar-label resources-label">RESOURCES</div>
+        <nav className="resource-nav" aria-label="Project resources">
+          <a className="nav-item" href="https://github.com/duongnq2798/spondion#readme" target="_blank" rel="noopener noreferrer" title="Documentation"><BookOpen size={18}/><span>Documentation</span><ArrowUpRight size={13} className="external-icon"/></a>
+          <a className="nav-item" href="https://github.com/duongnq2798/spondion" target="_blank" rel="noopener noreferrer" title="Source code"><Code2 size={18}/><span>Source code</span><ArrowUpRight size={13} className="external-icon"/></a>
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-callout"><div className="sidebar-callout-icon"><ShieldCheck size={19}/></div><strong>Your budget. Your rules.</strong><p>Authorize each charge.<br/>Keep control of the rest.</p><a href="https://github.com/duongnq2798/spondion/blob/main/docs/architecture.md" target="_blank" rel="noopener noreferrer">Explore the protocol <ArrowUpRight size={14}/></a></div>
+          <div className="sidebar-footer"><span className="status-dot"/><span>Built on Arc</span><span className="version-label">v0.1</span></div>
         </div>
-      </header>
+      </aside>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {/* Demo-mode status banners */}
-        {ENABLE_LOCAL_DEMO && demoState.error && !demoState.nodeReady && (
-          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
-            {demoState.error}
-          </div>
-        )}
-        {ENABLE_LOCAL_DEMO && demoState.nodeReady && (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs text-emerald-800 font-mono space-y-0.5">
-            <div><strong>Anvil chainId 31337</strong> · escrow: {demoState.escrowAddress.slice(0, 10)}…</div>
-            <div>usdc: {demoState.usdcAddress.slice(0, 10)}… · rpc: {demoState.rpcUrl}</div>
-          </div>
-        )}
+      <div className="app-main">
+        <header className="workspace-header"><div className="header-context"><a className="compact-wordmark" href="#">spondion<span>.</span></a><div className="breadcrumb"><span>Workspace</span><span className="breadcrumb-separator">/</span><strong>{tab === "demo" ? "Local sandbox" : "Overview"}</strong></div></div><div className="header-meta"><a className="network-pill" href="https://explorer.arc.io" target="_blank" rel="noopener noreferrer"><span className="arc-network-mark">∩</span>Arc Mainnet<ArrowUpRight size={12}/></a><span className="preview-badge">MVP Preview</span></div></header>
 
-        {/* Tabs — only show selector when multiple tabs exist */}
-        {visibleTabs.length > 1 && (
-          <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-            {visibleTabs.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                  tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {t === "demo" ? "Demo (Anvil)" : "Wallet (EIP-1193)"}
-              </button>
-            ))}
-          </div>
-        )}
+        <main className="workspace-main">
+          <div className="page-heading"><div><p className="eyebrow">PAYMENTS WORKSPACE</p><h1>{tab === "demo" ? "Your payment sandbox" : "A smarter way to pay for AI"}</h1><p className="page-description">Prepaid USDC. Clear spending limits. Every request accounted for.</p></div><span className="page-date">Spondion / 001</span></div>
 
-        {/* Content */}
+          <section className="product-hero" aria-label="How Spondion payments work">
+            <div className="hero-copy"><div className="hero-label"><span className="hero-label-dot"/>PROGRAMMABLE PREPAID PAYMENTS</div><h2>Prepay for AI.<br/><span>Stay in control.</span></h2><p>Set a budget, authorize usage, and take back what you don’t spend. One simple USDC payment flow.</p><div className="hero-bottom"><span className="usdc-symbol">$</span><span>Powered by USDC</span><span className="hero-bottom-divider"/><span>Built on Arc</span></div></div>
+            <div className="payment-visual" role="img" aria-label="An agent wallet funds an escrow. Authorized usage credits the service provider. Unused funds return to the wallet.">
+              <div className="flow-endpoint flow-sender"><span className="flow-icon"><Wallet size={18}/></span><span>Agent wallet<small>Prepaid budget</small></span><span className="flow-mini-tag">YOU</span></div>
+              <div className="flow-connector"><span/><span>Fund with USDC</span><ArrowRight size={13}/></div>
+              <div className="escrow-visual"><div className="escrow-brand"><span className="escrow-mark"><BrandMark/></span><span>Spondion escrow<small>Funds held by the contract</small></span><LockKeyhole size={16}/></div><div className="escrow-controls"><span><ShieldCheck size={13}/>Signed usage</span><span>Spending limits</span></div></div>
+              <div className="flow-connector"><span/><span>Settle authorized usage</span><ArrowRight size={13}/></div>
+              <div className="flow-endpoint flow-recipient"><span className="flow-icon"><Cpu size={18}/></span><span>AI service provider<small>Earns on approved usage</small></span><span className="flow-mini-tag">API</span></div>
+              <span className="flow-caption">Unused balance stays refundable <ArrowUpRight size={12}/></span>
+            </div>
+          </section>
+
+          <div className="workspace-section-heading"><div><span className="section-kicker">LET’S GET STARTED</span><h2>{tab === "demo" ? "Test the complete payment flow" : "Your payment workspace"}</h2></div><span className="section-note">{tab === "demo" ? "Local USDC only" : "Connect. Authorize. Settle."}</span></div>
+
+          {ENABLE_LOCAL_DEMO && tab === "demo" && <div className={`sandbox-status ${demoState.nodeReady ? "ready" : ""}`}><StatusDot loading={demoState.loading} error={demoState.error} ready={demoState.nodeReady}/><div><strong>{demoState.nodeReady ? "Local network ready" : "Starting local network"}</strong><span>{demoState.error && !demoState.nodeReady ? demoState.error : "Anvil 31337 · Mock USDC · No user wallet required"}</span></div><span className="sandbox-channel-count">{demoState.channels.length} channels</span></div>}
+
+          <div id="workspace" className="workspace-content">
         {tab === "demo" && ENABLE_LOCAL_DEMO && DemoView && (
-          <Suspense fallback={<div className="py-8 text-center text-slate-400 text-sm">Loading demo…</div>}>
+          <Suspense fallback={<div className="loading-panel">Loading your sandbox…</div>}>
             <DemoView appState={demoState} onRefresh={refreshDemoState} />
           </Suspense>
         )}
         {tab === "wallet" && <WalletView />}
-      </main>
+          </div>
+
+          <footer className="workspace-footer"><span>Spondion · Programmable payments for AI services</span><a href="https://studio.arc.io/app/5c8fa387-6104-4492-bce0-d9b93a71b81a" target="_blank" rel="noopener noreferrer">View Arc Studio project<ArrowUpRight size={13}/></a></footer>
+        </main>
+      </div>
     </div>
   );
+}
+
+function BrandMark() {
+  return <svg className="brand-mark" width="31" height="31" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="10" fill="currentColor"/><path d="M22 10H14a4 4 0 0 0 0 8h4a2 2 0 0 1 0 4H10M10 22h8a4 4 0 0 0 0-8h-4a2 2 0 0 1 0-4h8" stroke="#D8F3A3" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 
 function StatusDot({ loading, error, ready }: { loading: boolean; error: string | null; ready: boolean }) {

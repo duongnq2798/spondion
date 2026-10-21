@@ -42,6 +42,8 @@ Runtime prerequisites are Node.js 24+, Bun 1.4.3 and Forge/Anvil. The reviewed b
 
 ## Main files
 
+The redesigned interface uses a responsive navigation shell in `src/App.tsx` and evergreen/lime design tokens in `src/index.css`. Wallet connection, deployment status and the funding/usage/refund guide are separate presentation panels. The local demo presents numbered workflows with channel and settlement tables. The redesign preserves existing wallet authorization handlers, API calls, chain guards and exact amount validation; it adds no dependencies or simulated production balances. Studio attribution remains visible. See [redesign verification](REDESIGN.md).
+
 | Path | Purpose |
 |---|---|
 | `contracts/SpondionPrepaidEscrow.sol` | Studio-origin escrow source |

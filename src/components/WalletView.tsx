@@ -549,382 +549,202 @@ export default function WalletView() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5">
-
-      {/* Unconfigured notice */}
-      {!configured && (
-        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5 space-y-2">
-          <p className="text-sm font-semibold text-amber-800">Escrow not yet configured</p>
-          <p className="text-xs text-amber-700">
-            Set <code className="bg-amber-100 px-1 rounded">VITE_ESCROW_ADDRESS</code> after
-            mainnet deployment.{" "}
-            <code className="bg-amber-100 px-1 rounded">VITE_USDC_ADDRESS</code> defaults to the
-            Arc Mainnet USDC address.
-          </p>
-          <p className="text-xs text-amber-600">
-            Target chain: Arc Mainnet (chainId {CONFIGURED_CHAIN}).
-            See <code>docs/mainnet-approval.md</code> before deploying.
-          </p>
-          <div className="rounded-lg bg-amber-100 border border-amber-200 p-3 text-xs font-mono space-y-0.5">
-            <p><span className="text-amber-500">chain</span> {CONFIGURED_CHAIN}</p>
-            <p><span className="text-amber-500">rpc</span> {ENV_RPC_URL}</p>
-            <p><span className="text-amber-500">usdc</span> {ENV_USDC}</p>
-            <p><span className="text-amber-500">escrow</span> <em className="text-amber-400">(not set)</em></p>
+    <div className="wallet-workspace space-y-6 text-[#132c25]">
+      <div className="wallet-overview grid gap-5 md:grid-cols-[1.35fr_1fr]">
+        <section className="wallet-status-card wallet-connection-card rounded-2xl border border-[#dfe6e1] bg-white p-6 sm:p-7" aria-label="Your wallet">
+          <div className="wallet-card-heading flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="wallet-icon flex h-11 w-11 items-center justify-center rounded-xl bg-[#edf5ee] text-[#17694d]" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 8V5a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h14v11H6a3 3 0 0 1-3-3V6" /><path d="M20 12h-5a2 2 0 0 0 0 4h5" /><path d="M16 14h.01" /></svg>
+              </span>
+              <div>
+                <p className="wallet-eyebrow text-[11px] font-semibold uppercase tracking-[0.12em] text-[#77867d]">Payment wallet</p>
+                <h2 className="mt-1 text-base font-semibold">Your funds. Your approval.</h2>
+              </div>
+            </div>
+            <span className="wallet-network-badge inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#e0e8e1] px-2.5 py-1 text-[11px] font-medium text-[#52685a]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#17694d]" aria-hidden="true" /> Arc Mainnet
+            </span>
           </div>
-        </div>
-      )}
 
-      {/* Wallet connect */}
-      <div className="bg-white/70 rounded-2xl border border-slate-200/80 shadow-sm p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-800">Your Wallet (owner / signer)</p>
-            {isConnected
-              ? <p className="text-xs font-mono text-slate-500 mt-0.5">{address?.slice(0, 10)}…{address?.slice(-6)}</p>
-              : <p className="text-xs text-slate-400 mt-0.5">Connect to interact with the escrow.</p>
-            }
-          </div>
-          <ConnectKitButton />
-        </div>
-
-        {wrongNetwork && (
-          <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 flex items-center justify-between gap-2">
-            <p className="text-xs text-amber-700">
-              Wrong network (connected: {chainId}, need: {targetChainId})
+          <div className="mt-8 mb-6">
+            <p className="wallet-eyebrow mb-2 text-xs text-[#77867d]">{isConnected ? "Connected account" : "Ready when you are"}</p>
+            <p className={`text-2xl font-semibold tracking-[-0.035em] sm:text-[30px] ${isConnected ? "font-mono" : ""}`}>
+              {isConnected ? `${address?.slice(0, 8)}…${address?.slice(-6)}` : "Connect your wallet"}
             </p>
-            <button
-              onClick={() => { if (targetChainId) switchChain({ chainId: targetChainId }); }}
-              className="text-xs font-semibold text-amber-800 underline"
-            >
-              Switch
-            </button>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[#77867d]">
+              {isConnected ? "Review every authorization and payment from your own wallet." : "Manage prepaid USDC and authorize AI service usage in one place."}
+            </p>
           </div>
-        )}
 
-        {configured && isConnected && !wrongNetwork && (
-          <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-mono space-y-0.5">
-            <p><span className="text-slate-400">escrow</span> {escrowAddress}</p>
-            <p><span className="text-slate-400">usdc</span> {usdcAddress}</p>
-            {usdcDecimals !== null && (
-              <p>
-                <span className="text-slate-400">decimals</span> {usdcDecimals} (ERC-20)
-                {tokenReady
-                  ? <span className="text-emerald-600 ml-1">✓ escrow.usdc() matches</span>
-                  : escrowUsdc
-                    ? <span className="text-red-600 ml-1">✗ escrow.usdc()={escrowUsdc.slice(0, 10)}…</span>
-                    : <span className="text-amber-500 ml-1">reading…</span>
-                }
-              </p>
-            )}
+          <div className="wallet-connect-row flex flex-wrap items-center justify-between gap-4 border-t border-[#edf0ed] pt-5">
+            <div className="flex items-center gap-2 text-xs text-[#77867d]">
+              <span className={`h-2 w-2 rounded-full ${isConnected ? "bg-[#17694d]" : "bg-[#c3cdc6]"}`} aria-hidden="true" />
+              {isConnected ? "Wallet connected" : "No wallet connected"}
+            </div>
+            <div className="wallet-connect-button"><ConnectKitButton /></div>
           </div>
-        )}
-        {txHash && (
-          <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs space-y-1">
-            <p className="text-slate-700">{txStatus}</p>
-            <a
-              href={`https://explorer.arc.io/tx/${txHash}`}
-              target="_blank" rel="noopener noreferrer"
-              className="block font-mono text-blue-700 underline break-all"
-            >
-              {txHash}
-            </a>
-            <p className="text-slate-500">The latest transaction stays visible when you change or disconnect wallets.</p>
+
+          {wrongNetwork && (
+            <div className="wallet-note mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e4dcc5] bg-[#faf8f1] px-4 py-3 text-xs text-[#726344]" role="status">
+              <span>Switch to Arc to continue with this wallet.</span>
+              <button onClick={() => { if (targetChainId) switchChain({ chainId: targetChainId }); }} className="font-semibold text-[#17694d] underline underline-offset-4">Switch to Arc</button>
+            </div>
+          )}
+        </section>
+
+        <section className="wallet-status-card wallet-deployment-card flex flex-col rounded-2xl border border-[#dfe6e1] bg-white p-6 sm:p-7" aria-label="Payment availability">
+          <div className="flex items-center justify-between gap-3">
+            <p className="wallet-eyebrow text-[11px] font-semibold uppercase tracking-[0.12em] text-[#77867d]">Payment availability</p>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${configured && tokenReady ? "bg-[#edf5ee] text-[#17694d]" : "bg-[#f0f2ed] text-[#758069]"}`}>
+              {!configured ? "Deployment pending" : tokenReady ? "USDC verified" : "Verification pending"}
+            </span>
           </div>
-        )}
+          <h2 className="mt-6 max-w-[260px] text-[23px] font-semibold leading-[1.25] tracking-[-0.03em]">
+            {!configured ? "Payments open after deployment." : "Your payment channel, on your terms."}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-[#77867d]">
+            {!configured ? "Mainnet payments open after the escrow is deployed and approved. No funds are requested while deployment is pending." : "Set a budget, approve usage, and recover the balance you do not spend."}
+          </p>
+          <dl className="mt-auto space-y-3 pt-7 text-xs">
+            <div className="flex justify-between gap-4 border-t border-[#edf0ed] pt-3"><dt className="text-[#77867d]">Settlement network</dt><dd className="font-medium">Arc Mainnet</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-[#77867d]">Payment asset</dt><dd className="font-medium">USDC</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-[#77867d]">Authorization</dt><dd className="font-medium">Your wallet, every action</dd></div>
+          </dl>
+          {configured && isConnected && !wrongNetwork && (
+            <details className="wallet-contract-details mt-5 border-t border-[#edf0ed] pt-3 text-xs text-[#77867d]">
+              <summary className="cursor-pointer font-medium text-[#52685a]">Contract details</summary>
+              <dl className="mt-3 space-y-2 font-mono text-[11px]">
+                <div><dt className="font-sans text-[#77867d]">Escrow</dt><dd className="mt-1 break-all text-[#52685a]">{escrowAddress}</dd></div>
+                <div><dt className="font-sans text-[#77867d]">USDC</dt><dd className="mt-1 break-all text-[#52685a]">{usdcAddress}</dd></div>
+                {usdcDecimals !== null && <div className="font-sans">{tokenReady ? "USDC token verified" : escrowUsdc ? "Token verification failed — payments are disabled" : "Verifying payment token…"}</div>}
+              </dl>
+            </details>
+          )}
+        </section>
       </div>
 
-      {configured && (
-        <>
-          {/* ── Open Channel ── */}
-          <SectionCard title="Open Channel">
-            <p className="text-xs text-slate-500 mb-3">
-              Your connected wallet is the <strong>owner</strong> and (by default) the
-              authorized <strong>signer</strong>.  Enter the <strong>provider</strong> address
-              (who provides the service and earns credit) and the <strong>payout</strong>
-              address (where their credit is sent when they call withdraw()).
-              Two separate accounts can interoperate: owner signs vouchers, provider settles them.
-            </p>
-
-            {/* Provider + Payout + Signer inputs */}
-            <div className="space-y-2 mb-3">
-              {([
-                ["provider", "Provider address (0x…)", "Address that earns credit when vouchers are settled"],
-                ["payout",   "Payout address (0x…)",   "Address that receives credit on withdraw()"],
-                ["signer",   "Authorized signer (0x…, defaults to owner)", "Address whose EIP-712 signatures the contract will accept"],
-              ] as [keyof typeof ocForm, string, string][]).map(([key, placeholder, hint]) => (
-                <label key={key} className="flex flex-col gap-0.5">
-                  <span className="text-[11px] text-slate-400 capitalize">{key}</span>
-                  <input
-                    type="text"
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400/50 ${
-                      ocErrors[key] ? "border-red-400 bg-red-50" : "border-slate-200 bg-white"
-                    }`}
-                    placeholder={placeholder}
-                    value={ocForm[key]}
-                    onChange={(e) => { setOcForm((f) => ({ ...f, [key]: e.target.value.trim() })); setOcErrors((er) => ({ ...er, [key]: "" })); }}
-                  />
-                  {ocErrors[key]
-                    ? <span className="text-[11px] text-red-600">{ocErrors[key]}</span>
-                    : <span className="text-[11px] text-slate-400">{hint}</span>
-                  }
-                </label>
-              ))}
-            </div>
-
-            {/* Caps */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {([
-                ["pricePerUnit", "Price/unit (µUSDC)"],
-                ["perCallCap",   "Per-call cap (µ)"],
-                ["lifetimeCap",  "Lifetime cap (µ)"],
-              ] as [keyof typeof ocForm, string][]).map(([key, label]) => (
-                <label key={key} className="flex flex-col gap-1">
-                  <span className="text-[11px] text-slate-400">{label}</span>
-                  <input
-                    type="text" inputMode="numeric" pattern="\d*"
-                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-                    value={ocForm[key]}
-                    onChange={(e) => setOcForm((f) => ({ ...f, [key]: e.target.value.replace(/\D/g, "") }))}
-                  />
-                </label>
-              ))}
-            </div>
-
-            <button
-              onClick={handleOpenChannel}
-              disabled={busy || !canOpen}
-              className="w-full rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-            >
-              {!isConnected ? "Connect wallet first" : !tokenReady ? "Inspecting token…" : "Open Channel"}
-            </button>
-          </SectionCard>
-
-          {/* Channel ID + live state */}
-          <div className="bg-white/70 rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500 font-medium">Channel ID</span>
-              <input
-                type="text" inputMode="numeric" pattern="\d*"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-                value={channelId}
-                onChange={(e) => setChannelId(e.target.value.replace(/\D/g, ""))}
-                placeholder="0"
-              />
-            </label>
-            {channelInfo && (
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs font-mono space-y-0.5">
-                <p><span className="text-slate-400">state</span> {channelInfo.state}</p>
-                <p><span className="text-slate-400">owner</span> {channelInfo.owner}</p>
-                <p><span className="text-slate-400">provider</span> {channelInfo.provider}</p>
-                <p><span className="text-slate-400">payout</span> {channelInfo.payout}</p>
-                <p><span className="text-slate-400">signer</span> {channelInfo.signer === "0x0000000000000000000000000000000000000000" ? "(owner)" : channelInfo.signer}</p>
-                <p><span className="text-slate-400">balance</span> {microToDisplay(channelInfo.balance)} USDC</p>
-                <p><span className="text-slate-400">spent</span> {microToDisplay(channelInfo.spent)} USDC</p>
-                <p><span className="text-slate-400">cap</span> {microToDisplay(channelInfo.lifetimeCap)} USDC</p>
-                {channelInfo.state === "Closing" && (
-                  <p className="text-amber-600">
-                    refund unlocks {new Date(Number(channelInfo.refundAvailableAt) * 1000).toLocaleTimeString()}
-                  </p>
-                )}
-              </div>
-            )}
+      {txHash && (
+        <section className="wallet-transaction rounded-2xl border border-[#dfe6e1] bg-white px-5 py-4" aria-label="Latest transaction" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><p className="wallet-eyebrow text-[11px] font-semibold uppercase tracking-[0.1em] text-[#77867d]">Latest transaction</p><p className="mt-1 text-sm font-medium">{txStatus}</p></div>
+            <a href={`https://explorer.arc.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="wallet-explorer-link inline-flex items-center gap-2 text-xs font-semibold text-[#17694d]">View on explorer <span aria-hidden="true">↗</span></a>
           </div>
-
-          {/* Approve + Deposit */}
-          <SectionCard title="Approve + Deposit USDC">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500 font-medium">
-                Amount (USDC, {usdcDecimals !== null ? `${usdcDecimals}-decimal ERC-20` : "loading…"})
-              </span>
-              <input
-                type="text" inputMode="decimal"
-                className={`rounded-lg border px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400/50 ${
-                  amountError ? "border-red-400 bg-red-50" : "border-slate-200 bg-white"
-                }`}
-                value={amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-              />
-              {amountError
-                ? <span className="text-[11px] text-red-600">{amountError}</span>
-                : (
-                  <span className="text-[11px] text-slate-400">
-                    {safeBaseUnitsDisplay() ?? (usdcDecimals !== null && amount ? "invalid amount" : "")}
-                  </span>
-                )
-              }
-            </label>
-            <button
-              onClick={handleApproveAndDeposit}
-              disabled={busy || !canDeposit || !!amountError}
-              className="w-full mt-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-            >
-              {!isConnected ? "Connect wallet first" : !tokenReady ? "Inspecting token…" : "Approve + Deposit (2 txs)"}
-            </button>
-          </SectionCard>
-
-          {/* Sign + Settle + Export voucher */}
-          <SectionCard title="Sign + Export Voucher (EIP-712, owner)">
-            <p className="text-xs text-slate-500 mb-3">
-              Signs a usage voucher as the channel owner. Export it as JSON and share
-              with the provider for on-chain settlement, or settle directly below.
-            </p>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500 font-medium">Units to charge (integer string)</span>
-              <input
-                type="text" inputMode="numeric" pattern="\d*"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-                value={units}
-                onChange={(e) => setUnits(e.target.value.replace(/\D/g, "") || "1")}
-              />
-              {channelInfo && units && (
-                <span className="text-[11px] text-slate-400">
-                  Cost: {safeUsageCost()} USDC
-                </span>
-              )}
-            </label>
-            <button
-              onClick={handleSignVoucher}
-              disabled={busy || !canSign}
-              className="w-full mt-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-            >
-              Sign EIP-712 Voucher
-            </button>
-            {lastVoucher && (
-              <div className="mt-3 rounded-xl bg-blue-50 border border-blue-100 p-3 text-xs space-y-1">
-                <p className="font-semibold text-blue-700">Pending Voucher (signed, not yet settled)</p>
-                <p className="font-mono text-blue-600 break-all">reqId: {lastVoucher.requestId.slice(0, 20)}…</p>
-                <p className="text-blue-600">
-                  {lastVoucher.units} unit(s) · expires{" "}
-                  {new Date(Number(lastVoucher.deadline) * 1000).toLocaleTimeString()}
-                </p>
-                <button
-                  onClick={exportVoucher}
-                  className="mt-1 w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 transition-colors"
-                >
-                  Export Voucher JSON (share with provider)
-                </button>
-              </div>
-            )}
-          </SectionCard>
-
-          {/* Import + Settle voucher — provider path */}
-          <SectionCard title="Import + Settle Voucher (provider)">
-            <p className="text-xs text-slate-500 mb-3">
-              Provider: paste the JSON voucher received from the channel owner. Full
-              schema validation runs before import — wrong chainId, escrow, requestId
-              format, or oversized signature shows an error without touching valid state.
-              Connect the channel's provider to settle a voucher authorized by its signer.
-              The payout address withdraws the resulting credit.
-            </p>
-            <textarea
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400/50 resize-none"
-              rows={4}
-              placeholder={'{"channelId":"0","requestId":"0x…","units":"5","deadline":"…","signature":"0x…","chainId":5042,"escrow":"0x…"}'}
-              value={importJson}
-              onChange={(e) => { setImportJson(e.target.value); setImportError(""); }}
-            />
-            {importError && (
-              <p className="mt-1 text-xs text-red-600">{importError}</p>
-            )}
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={doImportVoucher}
-                disabled={!importJson.trim()}
-                className="flex-1 rounded-xl bg-slate-600 hover:bg-slate-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-              >
-                Validate + Import
-              </button>
-              <button
-                onClick={handleSettle}
-                disabled={busy || !canSettle}
-                className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-              >
-                Settle On-chain
-              </button>
-            </div>
-            {importedVoucher && (
-              <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs space-y-0.5">
-                <p className="font-semibold text-emerald-700">Imported Voucher (validated)</p>
-                <p className="font-mono text-emerald-600">ch#{importedVoucher.channelId} · {importedVoucher.units} unit(s)</p>
-                <p className="text-emerald-600 break-all">reqId: {importedVoucher.requestId.slice(0, 20)}…</p>
-                <p className="text-emerald-500 text-[11px]">sig length: {(importedVoucher.signature.length - 2) / 2} bytes</p>
-              </div>
-            )}
-          </SectionCard>
-
-          {/* Close + Refund */}
-          <SectionCard title="Close Channel">
-            <div className="flex gap-2">
-              <button
-                onClick={handleRequestClose}
-                disabled={busy || !canClose}
-                className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-              >
-                Request Close
-              </button>
-              <button
-                onClick={handleFinalizeRefund}
-                disabled={busy || !canRefund}
-                className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-              >
-                Finalize Refund
-              </button>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-2">
-              requestClose() starts the grace period on-chain.
-              finalizeRefund() becomes available once the grace elapses.
-            </p>
-          </SectionCard>
-
-          {/* Withdraw */}
-          <SectionCard title="Withdraw Provider Credit">
-            <p className="text-xs text-slate-500 mb-3">
-              Calls <code>withdraw()</code> — your connected wallet must be the channel&apos;s
-              payout address. The contract sends accumulated credit to <code>msg.sender</code>.
-            </p>
-            <button
-              onClick={handleWithdraw}
-              disabled={busy || !canWithdraw}
-              className="w-full rounded-xl bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white font-semibold text-sm py-2.5 transition-colors"
-            >
-              Withdraw (wallet = payout address)
-            </button>
-          </SectionCard>
-        </>
+          <p className="mt-2 break-all font-mono text-[11px] text-[#77867d]">{txHash}</p>
+          <p className="mt-2 text-[11px] text-[#77867d]">This transaction remains visible when you change or disconnect wallets.</p>
+        </section>
       )}
 
-      {/* Arc Mainnet info */}
-      {targetChainId === 5042 && (
-        <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-600 space-y-1">
-          <p className="font-semibold">Arc Mainnet (chainId 5042)</p>
-          <p>
-            Gas token is USDC (18-decimal native view). This app uses the 6-decimal
-            ERC-20 view exclusively — do not confuse the two.
-          </p>
-          <p className="text-amber-700 font-medium">
-            Transactions involve real funds. Review <code>docs/mainnet-approval.md</code> before proceeding.
-          </p>
+      {!configured && (
+        <section id="how-it-works" className="wallet-workflow rounded-2xl border border-[#dfe6e1] bg-white p-6 sm:p-7" aria-labelledby="wallet-workflow-heading">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><p className="wallet-eyebrow text-[11px] font-semibold uppercase tracking-[0.12em] text-[#77867d]">Built for the way agents work</p><h2 id="wallet-workflow-heading" className="mt-2 text-lg font-semibold tracking-[-0.02em]">A clear path from budget to usage.</h2></div>
+            <span className="rounded-full bg-[#eff5e9] px-3 py-1.5 text-[11px] font-medium text-[#5f7650]">Prepaid. Usage-based. Refundable.</span>
+          </div>
+          <div className="mt-8 grid gap-7 sm:grid-cols-3 sm:gap-6">
+            {([
+              ["01", "Fund a channel", "Choose your provider, set a spending limit, and prepay only the USDC you want to use."],
+              ["02", "Authorize usage", "Sign a usage voucher. Your provider can settle each authorized request only once."],
+              ["03", "Refund what’s left", "Close the channel and recover unused funds after the settlement grace period."],
+            ] as const).map(([number, title, description]) => (
+              <div className="wallet-step" key={number}>
+                <span className="wallet-step-number inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#e0e9dc] bg-[#f4f8ef] text-xs font-semibold text-[#17694d]">{number}</span>
+                <h3 className="mt-4 text-sm font-semibold">{title}</h3>
+                <p className="mt-2 text-xs leading-[1.85] text-[#77867d]">{description}</p>
+              </div>
+            ))}
+          </div>
+          <div className="wallet-trust-note mt-7 flex items-center gap-2 border-t border-[#edf0ed] pt-4 text-[11px] text-[#77867d]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 3 8 4v5c0 5-8 9-8 9s-8-4-8-9V7l8-4Z" /><path d="m8 12 3 3 5-6" /></svg>
+            Wallet approvals are always explicit. The current MVP has not been independently audited.
+          </div>
+        </section>
+      )}
+
+      {configured && (
+        <div className="wallet-form-grid grid items-start gap-5 xl:grid-cols-2">
+          <SectionCard title="Open a channel" eyebrow="Developer · Set your terms">
+            <p className="wallet-note mb-5 text-xs leading-6 text-[#77867d]">Your wallet owns the channel. Choose the service provider, where earnings go, and who may authorize usage.</p>
+            <div className="space-y-4">
+              {([
+                ["provider", "Service provider", "Wallet that settles authorized usage"],
+                ["payout", "Earnings destination", "Wallet that withdraws provider earnings"],
+                ["signer", "Authorized signer", "Defaults to your connected wallet"],
+              ] as [keyof typeof ocForm, string, string][]).map(([key, label, hint]) => (
+                <label key={key} className="wallet-field flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-[#52685a]">{label}</span>
+                  <input type="text" className={`wallet-input min-w-0 rounded-xl border bg-[#fcfdfb] px-3.5 py-3 font-mono text-xs outline-none focus:border-[#17694d] focus:ring-2 focus:ring-[#d8f3a3]/50 ${ocErrors[key] ? "border-red-400" : "border-[#dfe6e1]"}`} placeholder="0x…" value={ocForm[key]} onChange={(e) => { setOcForm((f) => ({ ...f, [key]: e.target.value.trim() })); setOcErrors((er) => ({ ...er, [key]: "" })); }} />
+                  {ocErrors[key] ? <span className="text-[11px] text-red-600">{ocErrors[key]}</span> : <span className="text-[11px] text-[#8a968e]">{hint}</span>}
+                </label>
+              ))}
+            </div>
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {([
+                ["pricePerUnit", "Price per unit"], ["perCallCap", "Per-request limit"], ["lifetimeCap", "Total usage limit"],
+              ] as [keyof typeof ocForm, string][]).map(([key, label]) => (
+                <label key={key} className="wallet-field flex min-w-0 flex-col gap-1.5"><span className="text-[11px] font-medium text-[#52685a]">{label}</span><input type="text" inputMode="numeric" pattern="\d*" className="wallet-input w-full min-w-0 rounded-xl border border-[#dfe6e1] bg-[#fcfdfb] px-3 py-3 text-sm tabular-nums outline-none focus:border-[#17694d] focus:ring-2 focus:ring-[#d8f3a3]/50" value={ocForm[key]} onChange={(e) => setOcForm((f) => ({ ...f, [key]: e.target.value.replace(/\D/g, "") }))} /></label>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-[#8a968e]">Limits use micro-USDC. 1 USDC = 1,000,000 micro-USDC.</p>
+            <button onClick={handleOpenChannel} disabled={busy || !canOpen} className="wallet-button mt-5 w-full rounded-xl bg-[#17694d] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#12563f] disabled:cursor-not-allowed disabled:opacity-40">{!isConnected ? "Connect wallet first" : !tokenReady ? "Verifying token…" : "Create payment channel"}</button>
+          </SectionCard>
+
+          <SectionCard title="Fund your channel" eyebrow="Developer · Prepay in USDC">
+            <p className="wallet-note mb-5 text-xs leading-6 text-[#77867d]">Add prepaid credit to an active channel. Your wallet confirms the exact allowance and deposit separately.</p>
+            <label className="wallet-field flex flex-col gap-1.5"><span className="text-xs font-medium text-[#52685a]">Channel ID</span><input type="text" inputMode="numeric" pattern="\d*" className="wallet-input rounded-xl border border-[#dfe6e1] bg-[#fcfdfb] px-3.5 py-3 text-sm tabular-nums outline-none focus:border-[#17694d] focus:ring-2 focus:ring-[#d8f3a3]/50" value={channelId} onChange={(e) => setChannelId(e.target.value.replace(/\D/g, ""))} placeholder="Enter your channel ID" /></label>
+            {channelInfo && (
+              <div className="wallet-channel-summary my-5 rounded-xl border border-[#e1e9dd] bg-[#f6f9f2] p-4">
+                <div className="mb-4 flex items-center justify-between gap-3"><span className="text-xs font-medium">Channel #{channelInfo.channelId}</span><span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[#17694d]">{channelInfo.state}</span></div>
+                <dl className="grid grid-cols-3 gap-3"><div><dt className="text-[10px] text-[#77867d]">Available</dt><dd className="mt-1 text-sm font-semibold tabular-nums">{microToDisplay(channelInfo.balance)} <span className="text-[10px] font-normal">USDC</span></dd></div><div><dt className="text-[10px] text-[#77867d]">Usage settled</dt><dd className="mt-1 text-sm font-semibold tabular-nums">{microToDisplay(channelInfo.spent)} <span className="text-[10px] font-normal">USDC</span></dd></div><div><dt className="text-[10px] text-[#77867d]">Usage limit</dt><dd className="mt-1 text-sm font-semibold tabular-nums">{microToDisplay(channelInfo.lifetimeCap)} <span className="text-[10px] font-normal">USDC</span></dd></div></dl>
+                {channelInfo.state === "Closing" && <p className="mt-3 text-[11px] text-[#726344]">Refund available at {new Date(Number(channelInfo.refundAvailableAt) * 1000).toLocaleTimeString()}</p>}
+                <details className="mt-4 border-t border-[#e1e9dd] pt-3 text-[11px] text-[#77867d]"><summary className="cursor-pointer font-medium">Channel participants</summary><dl className="mt-3 space-y-2 break-all"><div><dt>Owner</dt><dd className="font-mono text-[#52685a]">{channelInfo.owner}</dd></div><div><dt>Provider</dt><dd className="font-mono text-[#52685a]">{channelInfo.provider}</dd></div><div><dt>Payout</dt><dd className="font-mono text-[#52685a]">{channelInfo.payout}</dd></div><div><dt>Authorized signer</dt><dd className="font-mono text-[#52685a]">{channelInfo.signer === "0x0000000000000000000000000000000000000000" ? "Owner" : channelInfo.signer}</dd></div></dl></details>
+              </div>
+            )}
+            <label className="wallet-field mt-5 flex flex-col gap-1.5"><span className="text-xs font-medium text-[#52685a]">Deposit amount</span><div className="relative"><input type="text" inputMode="decimal" className={`wallet-input w-full rounded-xl border bg-[#fcfdfb] px-3.5 py-3 pr-16 text-lg font-medium tabular-nums outline-none focus:border-[#17694d] focus:ring-2 focus:ring-[#d8f3a3]/50 ${amountError ? "border-red-400" : "border-[#dfe6e1]"}`} value={amount} onChange={(e) => handleAmountChange(e.target.value)} /><span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-[#77867d]">USDC</span></div>{amountError ? <span className="text-[11px] text-red-600">{amountError}</span> : <span className="text-[11px] text-[#8a968e]">{safeBaseUnitsDisplay() ?? (usdcDecimals !== null && amount ? "Invalid amount" : "")}</span>}</label>
+            <button onClick={handleApproveAndDeposit} disabled={busy || !canDeposit || !!amountError} className="wallet-button mt-5 w-full rounded-xl bg-[#17694d] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#12563f] disabled:cursor-not-allowed disabled:opacity-40">{!isConnected ? "Connect wallet first" : !tokenReady ? "Verifying token…" : "Approve & deposit"}</button>
+            <p className="mt-3 text-center text-[11px] text-[#8a968e]">Two wallet confirmations · Exact amount only</p>
+          </SectionCard>
+
+          <SectionCard title="Authorize usage" eyebrow="Authorized signer · Usage voucher">
+            <p className="wallet-note mb-5 text-xs leading-6 text-[#77867d]">Approve a specific amount of service usage, then share the signed voucher with your provider.</p>
+            <label className="wallet-field flex flex-col gap-1.5"><span className="text-xs font-medium text-[#52685a]">Usage units</span><input type="text" inputMode="numeric" pattern="\d*" className="wallet-input rounded-xl border border-[#dfe6e1] bg-[#fcfdfb] px-3.5 py-3 text-sm tabular-nums outline-none focus:border-[#17694d] focus:ring-2 focus:ring-[#d8f3a3]/50" value={units} onChange={(e) => setUnits(e.target.value.replace(/\D/g, "") || "1")} />{channelInfo && units && <span className="text-[11px] text-[#77867d]">Authorized cost: {safeUsageCost()} USDC</span>}</label>
+            <button onClick={handleSignVoucher} disabled={busy || !canSign} className="wallet-button mt-5 w-full rounded-xl bg-[#17694d] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#12563f] disabled:cursor-not-allowed disabled:opacity-40">Sign usage voucher</button>
+            {lastVoucher && <div className="mt-5 rounded-xl border border-[#dbe7d6] bg-[#f4f8ef] p-4 text-xs"><p className="font-semibold text-[#17694d]">Signed and ready to share</p><p className="mt-2 text-[#77867d]">{lastVoucher.units} units · Expires {new Date(Number(lastVoucher.deadline) * 1000).toLocaleTimeString()}</p><p className="mt-2 break-all font-mono text-[10px] text-[#8a968e]">{lastVoucher.requestId}</p><button onClick={exportVoucher} className="wallet-button-secondary mt-4 w-full rounded-xl border border-[#cddbc7] bg-white px-3 py-2.5 text-xs font-semibold text-[#17694d] hover:bg-[#edf5ee]">Download voucher JSON</button></div>}
+          </SectionCard>
+
+          <SectionCard title="Settle authorized usage" eyebrow="Service provider · Receive credit">
+            <p className="wallet-note mb-5 text-xs leading-6 text-[#77867d]">Import the voucher shared by the authorized signer. Connect the channel’s provider wallet to settle it.</p>
+            <label className="wallet-field flex flex-col gap-1.5"><span className="text-xs font-medium text-[#52685a]">Signed voucher</span><textarea className="wallet-input w-full resize-y rounded-xl border border-[#dfe6e1] bg-[#fcfdfb] px-3.5 py-3 font-mono text-xs outline-none focus:border-[#17694d] focus:ring-2 focus:ring-[#d8f3a3]/50" rows={5} placeholder="Paste the complete voucher JSON…" value={importJson} onChange={(e) => { setImportJson(e.target.value); setImportError(""); }} /></label>
+            {importError && <p className="mt-2 text-[11px] text-red-600">{importError}</p>}
+            <div className="mt-4 flex flex-wrap gap-3"><button onClick={doImportVoucher} disabled={!importJson.trim()} className="wallet-button-secondary flex-1 rounded-xl border border-[#d3ded4] bg-white px-4 py-3 text-xs font-semibold text-[#17694d] hover:bg-[#edf5ee] disabled:cursor-not-allowed disabled:opacity-40">Validate & import</button><button onClick={handleSettle} disabled={busy || !canSettle} className="wallet-button flex-1 rounded-xl bg-[#17694d] px-4 py-3 text-xs font-semibold text-white hover:bg-[#12563f] disabled:cursor-not-allowed disabled:opacity-40">Settle usage</button></div>
+            {importedVoucher && <div className="mt-5 rounded-xl border border-[#dbe7d6] bg-[#f4f8ef] p-4 text-xs"><p className="font-semibold text-[#17694d]">Voucher loaded</p><p className="mt-2 text-[#77867d]">Channel #{importedVoucher.channelId} · {importedVoucher.units} units</p><p className="mt-2 break-all font-mono text-[10px] text-[#8a968e]">{importedVoucher.requestId}</p><p className="mt-2 text-[10px] text-[#8a968e]">Authorization is checked by the contract at settlement.</p></div>}
+          </SectionCard>
+
+          <SectionCard title="Recover unused funds" eyebrow="Developer · Close & refund">
+            <p className="wallet-note mb-5 text-xs leading-6 text-[#77867d]">Close your channel to start the settlement grace period. When it ends, refund the remaining balance to your wallet.</p>
+            <div className="flex flex-wrap gap-3"><button onClick={handleRequestClose} disabled={busy || !canClose} className="wallet-button-secondary flex-1 rounded-xl border border-[#d3ded4] bg-white px-4 py-3 text-xs font-semibold text-[#17694d] hover:bg-[#edf5ee] disabled:cursor-not-allowed disabled:opacity-40">Request close</button><button onClick={handleFinalizeRefund} disabled={busy || !canRefund} className="wallet-button flex-1 rounded-xl bg-[#17694d] px-4 py-3 text-xs font-semibold text-white hover:bg-[#12563f] disabled:cursor-not-allowed disabled:opacity-40">Refund balance</button></div>
+          </SectionCard>
+
+          <SectionCard title="Withdraw earnings" eyebrow="Payout wallet · Provider credit">
+            <p className="wallet-note mb-5 text-xs leading-6 text-[#77867d]">Connect the channel’s earnings destination wallet to withdraw its accumulated USDC credit.</p>
+            <button onClick={handleWithdraw} disabled={busy || !canWithdraw} className="wallet-button mt-auto w-full rounded-xl bg-[#17694d] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#12563f] disabled:cursor-not-allowed disabled:opacity-40">Withdraw provider credit</button>
+          </SectionCard>
         </div>
       )}
 
-      {usdcDecimals !== null && (
-        <p className="text-[11px] text-slate-400 text-center">
-          Token: {usdcDecimals}-decimal ERC-20 · 1 USDC = 10<sup>{usdcDecimals}</sup> base units
-        </p>
-      )}
+      {configured && <div className="wallet-trust-note flex items-start gap-2 px-1 text-[11px] leading-5 text-[#8a968e]"><svg className="mt-0.5 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V6a4 4 0 0 1 8 0v4" /></svg><p>Arc Mainnet transactions use real USDC. Review every wallet confirmation. This MVP has not been independently audited.</p></div>}
     </div>
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white/70 rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-slate-100">
-        <h2 className="font-semibold text-slate-800 text-sm uppercase tracking-wide" style={{ letterSpacing: "0.06em" }}>
-          {title}
-        </h2>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
+    <section className="wallet-section-card min-w-0 overflow-hidden rounded-2xl border border-[#dfe6e1] bg-white">
+      <header className="wallet-section-heading border-b border-[#edf0ed] px-6 py-5">
+        {eyebrow && <p className="wallet-eyebrow mb-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8a968e]">{eyebrow}</p>}
+        <h2 className="text-base font-semibold tracking-[-0.02em] text-[#132c25]">{title}</h2>
+      </header>
+      <div className="wallet-section-body p-6">{children}</div>
+    </section>
   );
 }

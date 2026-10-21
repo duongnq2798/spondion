@@ -1,0 +1,143 @@
+$ vite build
+vite v6.0.5 building for production...
+transforming...
+../../../work/js-tooling/node_modules/@base-org/account/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../work/js-tooling/node_modules/@base-org/account/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/@base-org/account/node_modules/ox/_esm/core/Base64.js (6:27): A comment
+
+"/*#__PURE__*/"
+
+in "../../../work/js-tooling/node_modules/@base-org/account/node_modules/ox/_esm/core/Base64.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../work/js-tooling/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Base64.js (6:27): A comment
+
+"/*#__PURE__*/"
+
+in "../../../work/js-tooling/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Base64.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/porto/node_modules/ox/_esm/core/Base64.js (6:27): A comment
+
+"/*#__PURE__*/"
+
+in "../../../work/js-tooling/node_modules/porto/node_modules/ox/_esm/core/Base64.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/@base-org/account/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../work/js-tooling/node_modules/@base-org/account/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../work/js-tooling/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/porto/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../../work/js-tooling/node_modules/porto/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../work/js-tooling/node_modules/porto/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../../work/js-tooling/node_modules/porto/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 6202 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                        0.70 kB │ gzip:   0.43 kB
+dist/assets/index-SUBGrF5X.css                        39.04 kB │ gzip:   8.74 kB
+dist/assets/cursor-BiBqn6zE.js                         0.26 kB │ gzip:   0.22 kB
+dist/assets/chevron-left-BCeCJ9CT.js                   0.40 kB │ gzip:   0.28 kB
+dist/assets/chevron-top-ChzqRiZx.js                    0.40 kB │ gzip:   0.28 kB
+dist/assets/external-link-jPkmPeQR.js                  0.40 kB │ gzip:   0.28 kB
+dist/assets/chevron-bottom-CZUuDSgv.js                 0.40 kB │ gzip:   0.28 kB
+dist/assets/chevron-right-Dl8qsroT.js                  0.40 kB │ gzip:   0.28 kB
+dist/assets/arrow-top-DqKrHg_-.js                      0.41 kB │ gzip:   0.29 kB
+dist/assets/arrow-bottom-DhpTo-Hy.js                   0.41 kB │ gzip:   0.29 kB
+dist/assets/arrow-left-oHuhlAc_.js                     0.41 kB │ gzip:   0.29 kB
+dist/assets/arrow-right-CvIFD6CW.js                    0.42 kB │ gzip:   0.29 kB
+dist/assets/off-BbKTnGwe.js                            0.43 kB │ gzip:   0.29 kB
+dist/assets/search-B5deSCkc.js                         0.44 kB │ gzip:   0.30 kB
+dist/assets/close-CFymo4DI.js                          0.44 kB │ gzip:   0.29 kB
+dist/assets/all-wallets-CPJP7M0J.js                    0.45 kB │ gzip:   0.26 kB
+dist/assets/filters-CHyv1m9Q.js                        0.45 kB │ gzip:   0.28 kB
+dist/assets/info-circle-DSHjyXxX.js                    0.47 kB │ gzip:   0.30 kB
+dist/assets/more-DqbqARN_.js                           0.49 kB │ gzip:   0.31 kB
+dist/assets/refresh-DX0ZjlI9.js                        0.49 kB │ gzip:   0.33 kB
+dist/assets/warning-circle-BmkMKEHH.js                 0.50 kB │ gzip:   0.31 kB
+dist/assets/coinPlaceholder-DmSEI_wO.js                0.50 kB │ gzip:   0.35 kB
+dist/assets/compass-DErc9kOW.js                        0.52 kB │ gzip:   0.34 kB
+dist/assets/swapVertical-CASaCn9S.js                   0.55 kB │ gzip:   0.34 kB
+dist/assets/swapHorizontal-B3duDiiP.js                 0.55 kB │ gzip:   0.33 kB
+dist/assets/x-7t2DbS33.js                              0.57 kB │ gzip:   0.39 kB
+dist/assets/cursor-transparent-o6_34ab4.js             0.58 kB │ gzip:   0.36 kB
+dist/assets/twitterIcon-DI3aTtT6.js                    0.58 kB │ gzip:   0.38 kB
+dist/assets/mobile-Cqzn7WRd.js                         0.59 kB │ gzip:   0.32 kB
+dist/assets/checkmark-bold-Du0X-TCR.js                 0.65 kB │ gzip:   0.43 kB
+dist/assets/etherscan-BoffmxdS.js                      0.70 kB │ gzip:   0.45 kB
+dist/assets/checkmark-CNfmJGb0.js                      0.71 kB │ gzip:   0.47 kB
+dist/assets/help-circle-CKqHEgQe.js                    0.71 kB │ gzip:   0.43 kB
+dist/assets/wallet-mYVPP5Jl.js                         0.72 kB │ gzip:   0.42 kB
+dist/assets/plus-D2ghdO4y.js                           0.76 kB │ gzip:   0.42 kB
+dist/assets/verify-filled-BZCV50J9.js                  0.77 kB │ gzip:   0.47 kB
+dist/assets/add-C24wMEmc.js                            0.77 kB │ gzip:   0.43 kB
+dist/assets/google-B-nBm9_Z.js                         0.81 kB │ gzip:   0.45 kB
+dist/assets/three-dots-DLl1rqWD.js                     0.84 kB │ gzip:   0.41 kB
+dist/assets/clock-DK03hHZi.js                          0.84 kB │ gzip:   0.47 kB
+dist/assets/disconnect-CbiFJkfn.js                     0.89 kB │ gzip:   0.51 kB
+dist/assets/twitch-Db_LBnE3.js                         0.90 kB │ gzip:   0.50 kB
+dist/assets/bank-CitJ844j.js                           0.94 kB │ gzip:   0.52 kB
+dist/assets/apple-DZiB3nWp.js                          0.96 kB │ gzip:   0.53 kB
+dist/assets/play-store-i1vGLTrY.js                     1.01 kB │ gzip:   0.52 kB
+dist/assets/farcaster-04A58qry.js                      1.02 kB │ gzip:   0.53 kB
+dist/assets/arrow-bottom-circle-fu3bQhvE.js            1.13 kB │ gzip:   0.53 kB
+dist/assets/github-rLzatviB.js                         1.13 kB │ gzip:   0.60 kB
+dist/assets/swapHorizontalBold-C0U1-Q5D.js             1.16 kB │ gzip:   0.62 kB
+dist/assets/app-store-B7UssYVm.js                      1.20 kB │ gzip:   0.67 kB
+dist/assets/mail-BLgFb1cn.js                           1.21 kB │ gzip:   0.66 kB
+dist/assets/facebook-C7TIAk7E.js                       1.23 kB │ gzip:   0.64 kB
+dist/assets/wallet-placeholder-BDUtTPOC.js             1.26 kB │ gzip:   0.59 kB
+dist/assets/desktop-BKeAsNWT.js                        1.27 kB │ gzip:   0.64 kB
+dist/assets/discord-CS8XmGwI.js                        1.30 kB │ gzip:   0.66 kB
+dist/assets/swapHorizontalMedium-gbHjRq5K.js           1.30 kB │ gzip:   0.68 kB
+dist/assets/recycle-horizontal-hzHTSyTB.js             1.35 kB │ gzip:   0.70 kB
+dist/assets/extension-BQaWUc0H.js                      1.43 kB │ gzip:   0.69 kB
+dist/assets/telegram-N6GK72tJ.js                       1.45 kB │ gzip:   0.84 kB
+dist/assets/swapHorizontalRoundedBold-Cm5_uTKq.js      1.46 kB │ gzip:   0.77 kB
+dist/assets/verify-pR9NraJ-.js                         1.47 kB │ gzip:   0.71 kB
+dist/assets/qr-code-CCoHGmar.js                        1.52 kB │ gzip:   0.53 kB
+dist/assets/browser-CdLq74iZ.js                        1.58 kB │ gzip:   0.78 kB
+dist/assets/network-placeholder-BaHTV02K.js            1.65 kB │ gzip:   0.73 kB
+dist/assets/id-DpKdQqS8.js                             1.75 kB │ gzip:   0.81 kB
+dist/assets/nftPlaceholder-COoRlOpH.js                 1.75 kB │ gzip:   0.87 kB
+dist/assets/info-qckXvJ0_.js                           2.26 kB │ gzip:   1.14 kB
+dist/assets/exclamation-triangle-Bcm0-V8F.js           2.42 kB │ gzip:   1.13 kB
+dist/assets/send-BfTwO49d.js                           2.42 kB │ gzip:   1.28 kB
+dist/assets/card-BpawNPvo.js                           2.59 kB │ gzip:   1.17 kB
+dist/assets/chrome-store-BMhfc14X.js                   2.59 kB │ gzip:   1.01 kB
+dist/assets/reown-logo-DfikRjPA.js                     2.60 kB │ gzip:   1.07 kB
+dist/assets/lightbulb-DMW79X1n.js                      2.72 kB │ gzip:   1.22 kB
+dist/assets/ccip-lXCSXpr-.js                           3.04 kB │ gzip:   1.39 kB
+dist/assets/image-DX1Ip02R.js                          3.49 kB │ gzip:   1.51 kB
+dist/assets/copy-DlK2qGOz.js                           3.82 kB │ gzip:   1.47 kB
+dist/assets/walletconnect-C2jgOvCI.js                  4.06 kB │ gzip:   1.66 kB
+dist/assets/index-dXGueiG9.js                         38.52 kB │ gzip:   9.38 kB
+dist/assets/w3m-modal-XnpCm7ij.js                     40.06 kB │ gzip:   9.39 kB
+dist/assets/index-DrAshLsx-Cgwd7AHH.js                40.78 kB │ gzip:  12.75 kB
+dist/assets/basic-n40qQoMq.js                        143.12 kB │ gzip:  33.11 kB
+dist/assets/index.es-IdpigWBE.js                     399.50 kB │ gzip: 115.33 kB
+dist/assets/core-Dd9oh_vT.js                         484.14 kB │ gzip: 132.18 kB
+dist/assets/index-CaIkCm5Q.js                      1,417.72 kB │ gzip: 444.71 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 20.84s

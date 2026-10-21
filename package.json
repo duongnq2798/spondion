@@ -1,0 +1,59 @@
+{
+  "name": "spondion",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:demo": "VITE_ENABLE_LOCAL_DEMO=true vite",
+    "server": "bun run server/index.ts",
+    "e2e": "bun run scripts/e2e-onchain.ts",
+    "lint": "oxlint --type-aware src scripts --fix; s=$?; oxlint --fix .; exit $((s>0?s:$?))",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
+    "check": "bash scripts/check.sh",
+    "contracts:build": "forge build",
+    "contracts:test": "forge test",
+    "build:demo": "VITE_ENABLE_LOCAL_DEMO=true bunx vite build",
+    "build:wallet": "bunx vite build",
+    "build": "vite build",
+    "test": "node --test --test-isolation=none tests/wallet-validation.test.ts",
+    "test:backend": "bun test server/backend-regression.test.ts",
+    "prepare:mainnet": "bun run scripts/prepare-mainnet.ts"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.1.0",
+    "@tanstack/react-query": "^5.62.7",
+    "@web3icons/react": "^4.0.0",
+    "clsx": "^2.1.1",
+    "connectkit": "^1.9.2",
+    "framer-motion": "^11.15.0",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sonner": "^1.7.1",
+    "tailwind-merge": "^2.6.0",
+    "viem": "^2.56.3",
+    "wagmi": "^2.19.5"
+  },
+  "overrides": {
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "oxlint": "^1.80.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~7.0.2",
+    "vite": "^6.0.5",
+    "vite-plugin-node-polyfills": "^0.22.0",
+    "@types/bun": "1.4.3"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

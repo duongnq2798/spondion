@@ -1,0 +1,43 @@
+{
+  "completedAtUtc": "2026-10-21T03:30:22.3573266Z",
+  "testedSource": "work/studio-current-09",
+  "deliveredSource": "outputs/Spondion/app",
+  "productSoliditySourceUnchanged": true,
+  "deliveredSolidityMatchesTestedSource": true,
+  "passed": 72,
+  "failed": 0,
+  "skipped": 0,
+  "fuzzTests": 3,
+  "runsPerFuzzTest": 256,
+  "compiler": {
+    "version": "0.8.28",
+    "longVersion": "0.8.28+commit.7893614a",
+    "compilerPath": "C:\\Users\\eric\\Documents\\Codex\\2026-10-20\\referenced-chatgpt-conversation-this-is-an-2\\work\\verify-tooling\\solc\\solc-windows-amd64-v0.8.28+commit.7893614a.exe",
+    "sha256": "76a71001309810aafd0462d9b2f2612bf19b89550c866140edca26e533de06bc",
+    "sourceUrl": "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/windows-amd64/solc-windows-amd64-v0.8.28+commit.7893614a.exe",
+    "officialIndexUrl": "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/windows-amd64/list.json",
+    "verifiedAtUtc": "2026-10-21T03:28:53.537Z"
+  },
+  "foundry": {
+    "version": "1.7.1",
+    "registryTarball": "https://registry.npmjs.org/@foundry-rs/forge-win32-amd64/-/forge-win32-amd64-1.7.1.tgz",
+    "registryIntegrity": "sha512-WK+gWWlWYpgrsrKcle4hzV5k5TPoVE8acsnNnmckQhvcbcZBG2VukpkqFCJgOpPX1xuSYtskHTIhJbCx1w854w==",
+    "binarySha256": "6df26c16a6e53519abdd09fcdacf9af1ecdb50e216ee1816fa8012b5a553ef48"
+  },
+  "openzeppelin": {
+    "version": "5.1.0",
+    "registryTarball": "https://registry.npmjs.org/@openzeppelin/contracts/-/contracts-5.1.0.tgz",
+    "registryIntegrity": "sha512-p1ULhl7BXzjjbha5aqst+QMLY+4/LCWADXOCsmLHRM77AqiPjnd9vvUN9sosUfhL9JGKpZ0TjEGxgvnizmWGSA=="
+  },
+  "settings": {
+    "evmVersion": "paris",
+    "optimizer": true,
+    "optimizerRuns": 200,
+    "offline": true,
+    "ffi": false,
+    "cacheAndArtifactsOutsideProduct": true,
+    "publicNetworkTransactions": false,
+    "userWalletSignatures": false
+  },
+  "warning": "Solc warning 2519: local test variable sig shadows another local variable; tests pass."
+}

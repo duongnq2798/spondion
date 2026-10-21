@@ -1,0 +1,159 @@
+
+Spondion On-chain E2E Test Suite — revision 4
+====================================================
+RPC:    http://127.0.0.1:19545
+API:    http://127.0.0.1:14001
+Contracts: compiled Foundry artifacts
+Signing:   EIP-712 typed-data
+
+[setup] Starting Anvil on port 19545…
+[setup] Anvil ready
+
+=== deployment ===
+  [PASS] chainId is 31337 (got 31337)
+  [PASS] MockUSDC receipt success
+  [PASS] MockUSDC deployed (0x5fbdb2315678afecb367f032d93f642f64180aa3)
+  [PASS] Escrow receipt success
+  [PASS] SpondionPrepaidEscrow deployed (0xe7f1725e7734ce288f8367e1bb143e90bb3f0512)
+
+[setup] Starting demo server on port 14001…
+[demo] [server] Starting Anvil on http://127.0.0.1:19546
+[demo] [server] Spondion backend listening on http://127.0.0.1:14001
+[server] Bootstrapping Anvil node…
+[server] Anvil already running — reusing
+[demo] [server] Deploying MockUSDC…
+[demo] [server] MockUSDC at 0x5fbdb2315678afecb367f032d93f642f64180aa3
+[server] Deploying SpondionPrepaidEscrow…
+[demo] [server] Escrow at 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 block 2n
+[demo] [server] Deployment complete. Node ready.
+  [PASS] backend status.ready on separate owned chain
+[setup] Demo server ready
+
+=== openChannel + deposit ===
+  [PASS] openChannel receipt success
+  [PASS] ChannelOpened event present
+  [PASS] channel balance = DEPOSIT (got 50000)
+  [PASS] channel state Active (0) (got 0)
+  [PASS] totalLiabilities >= DEPOSIT after open+fund (got 50000)
+
+=== settleUsage (EIP-712) ===
+  [PASS] settle receipt success
+  [PASS] UsageSettled event present
+  [PASS] UsageSettled event amount == 5 * 1000 = 5000 (got 5000)
+  [PASS] channel balance decreased by 5000 (got 45000)
+  [PASS] channel spent increased by 5000 (got 5000)
+  [PASS] provider credit = 5000 (got 5000)
+
+=== duplicate rejection ===
+  [PASS] duplicate settle reverts on-chain
+
+=== deadline boundary (inclusive) ===
+  [PASS] boundary transaction block.timestamp equals deadline
+  [PASS] settlement at inclusive deadline succeeds
+  [PASS] boundary voucher consumed on chain
+  [PASS] expired boundary is exactly deadline plus one second
+  [PASS] deadline plus one rejects with VOUCHER_EXPIRED
+  [PASS] expired boundary voucher remains unconsumed
+
+=== wrong-chain domain rejection ===
+  [PASS] wrong-chain EIP-712 domain reverts
+
+=== same requestId fresh signature ===
+  [PASS] same requestId with fresh signature reverts
+
+=== cap enforcement ===
+  [PASS] per-call cap exceeded reverts
+
+=== replay after top-up (must still reject) ===
+  [PASS] top-up deposit succeeded
+  [PASS] replay after top-up reverts (consumedVouchers mapping)
+  [PASS] balance positive after top-up (got 92000)
+
+=== requestClose + early-refund rejection + grace + finalizeRefund ===
+  [PASS] requestClose receipt success
+  [PASS] state is Closing (1) (got 1)
+  [PASS] refundAvailableAt > 0
+  [PASS] early finalizeRefund reverts (grace not elapsed)
+  [PASS] time advanced past grace period
+  [PASS] finalizeRefund receipt success
+  [PASS] state is Closed (2) (got 2)
+  [PASS] channel balance is 0 after refund (got 0)
+  [PASS] refund confirmed (returned 92000 µUSDC)
+
+=== provider withdraw + ProviderWithdrawn event ===
+  [PASS] payout has nonzero credit before withdraw (got 8000)
+  [PASS] withdraw receipt success
+  [PASS] ProviderWithdrawn event present
+  [PASS] ProviderWithdrawn amount == prior credit (exact conservation) (decoded=8000 credit=8000)
+  [PASS] credit zeroed after withdraw (got 0)
+
+=== multi-op conservation (balanceOf(escrow) >= totalLiabilities) ===
+  [PASS] conservation channel opened (event decoded)
+  [PASS] contract balance >= totalLiabilities (solvent) (bal=100000 liab=100000)
+  [PASS] exact conservation after full lifecycle (bal >= liab) (bal=0 liab=0)
+  [PASS] completed fixture lifecycles leave zero liabilities (got 0)
+  [PASS] completed fixture lifecycles leave zero escrow tokens (got 0)
+
+=== malformed input / no-state-change (before any writes) ===
+  [PASS] float amount rejected 400 ({"pricePerUnit":"1.5","perCallCap":"1000) (got 400)
+  [PASS] float amount rejected 400 ({"pricePerUnit":"1000","perCallCap":"100) (got 400)
+  [PASS] zero pricePerUnit rejected 400 (got 400)
+  [PASS] negative pricePerUnit rejected 400 (got 400)
+  [PASS] leading-zero amount rejected 400 (S11) (got 400)
+  [PASS] perCallCap > lifetimeCap rejected 400 (got 400)
+  [PASS] voucher for nonexistent channel → 404 (got 404)
+  [PASS] settle with missing requestId → 400 (got 400)
+  [PASS] settle with float units → 400 (got 400)
+  [PASS] withdraw with wrong payout address → 400 (got 400)
+  [PASS] demo/complete with float channelId → 400 (got 400)
+  [PASS] forbidden Origin returns 403 (got 403)
+
+=== HTTP API mandatory sequence ===
+  [PASS] GET /health 200 (got 200)
+  [PASS] GET /status 200 ready=true
+  -- concurrent opens (distinct event-decoded IDs) --
+  [PASS] concurrent open 1 → 201 (got 201)
+  [PASS] concurrent open 2 → 201 (got 201)
+  [PASS] concurrent opens return distinct channelIds (ch1=0 ch2=1)
+  [PASS] POST /channels 201 (got 201)
+  [PASS] channel state Active
+  [PASS] channel balance is decimal string
+  [PASS] balance string parses as BigInt
+  [PASS] POST /voucher 200 (got 200)
+  [PASS] signingMethod EIP-712
+  [PASS] voucher.units is string
+  [PASS] voucher.deadline is string
+  [PASS] voucher.channelId matches
+  [PASS] POST /settle 200 (got 200)
+  [PASS] settlement.amount is string
+  [PASS] settlement.amount == '3000' (decoded from UsageSettled event) (got 3000)
+  [PASS] settlement.amount is nonzero
+  [PASS] no Number(bigint) coercion: amount parses as BigInt
+  [PASS] API duplicate settle → 400 (got 400)
+  [PASS] POST /demo/complete 200 (got 200)
+  [PASS] demo/complete units = word count string '3' (got 3)
+  [PASS] demo/complete amount is string
+  [PASS] demo/complete amount == '3000' (decoded from UsageSettled event) (got 3000)
+  [PASS] demo/complete channelBalance is string
+  [PASS] GET /channels 200 (got 200)
+  [PASS] providerCredit values are strings
+  [PASS] settlements have string amounts
+  [PASS] settlements have blockTimestamp number
+  [PASS] providerCredit nonzero after settlements (total=6000)
+  [PASS] POST /close 200 (got 200)
+  [PASS] early /refund 400 (grace not elapsed) (got 400)
+  [PASS] POST /skip-time 200 (got 200)
+  [PASS] POST /refund 200 (got 200)
+  [PASS] POST /withdraw 200 (credit exists) (got 200)
+  [PASS] withdrawn is string
+  [PASS] withdrawn amount nonzero (got 6000)
+  -- fresh channel + settle after time warp --
+  [PASS] fresh channel 201 (got 201)
+  [PASS] fresh channel Active
+  [PASS] fresh voucher 200 (got 200)
+  [PASS] fresh channel settle 200 (got 200)
+  [PASS] fresh settlement amount == '2000' (got 2000)
+
+====================================================
+Results: 103 passed, 0 failed
+====================================================

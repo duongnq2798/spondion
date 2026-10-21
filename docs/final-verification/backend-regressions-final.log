@@ -1,0 +1,17 @@
+bun test v1.4.3 (c6da4a4d3)
+
+outputs\Spondion\app\server\backend-regression.test.ts:
+(pass) decimal strings are mandatory before any write > rejects numeric JSON pricePerUnit without opening a channel [5.23ms]
+(pass) decimal strings are mandatory before any write > rejects numeric JSON perCallCap without opening a channel [1.91ms]
+(pass) decimal strings are mandatory before any write > rejects numeric JSON lifetimeCap without opening a channel [2.32ms]
+(pass) decimal strings are mandatory before any write > rejects numeric JSON initialDeposit without opening a channel [2.12ms]
+(pass) decimal strings are mandatory before any write > rejects numeric voucher units instead of coercing them [0.69ms]
+(pass) decimal strings are mandatory before any write > rejects numeric demo channelId without settling [1.98ms]
+(pass) decimal strings are mandatory before any write > rejects numeric settlement units and deadline without a transaction [10.17ms]
+(pass) concurrent withdrawals use queued credit and successful receipt event amounts [37.68ms]
+(pass) withdrawal response includes settlements ahead of it in the write queue [8036.96ms]
+
+ 9 pass
+ 0 fail
+ 36 expect() calls
+Ran 9 tests across 1 file. [8.73s]

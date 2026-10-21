@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Foundry build artifacts (caches, not source)
+contracts/out/
+contracts/cache/
+contracts/lib/
+
+# Environment files (may contain credentials)
+.env
+.env.local
+.env.*.local
+
+# Runtime / test outputs
+traces.jsonl
+console.jsonl
+/tmp/
+
+# Bun
+.bun-version
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Circle entity secret recovery (NEVER commit)
+.circle/
+
+# All private env variants; share only sanitized configuration
+.env*
+!.env.example
+.arc-studio/
+work/

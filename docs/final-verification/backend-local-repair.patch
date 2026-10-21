@@ -1,0 +1,535 @@
+diff --git a/work/studio-current-09/server/index.ts b/outputs/Spondion/app/server/index.ts
+index e7b5976..30349d9 100644
+--- a/work/studio-current-09/server/index.ts
++++ b/outputs/Spondion/app/server/index.ts
+@@ -399,7 +399,9 @@ async function readBody(req: IncomingMessage): Promise<Record<string, unknown>>
+  */
+ function parseBigInt(val: unknown, fieldName: string, min = 0n, max = 2n ** 256n - 1n): { ok: true; value: bigint } | { ok: false; error: string } {
+   if (val === undefined || val === null || val === "") return { ok: false, error: `${fieldName}: missing` };
+-  const s = String(val).trim();
++  // JSON numbers may already have lost precision before this handler sees them.
++  if (typeof val !== "string") return { ok: false, error: `${fieldName}: must be a decimal integer string` };
++  const s = val.trim();
+   // Must be a non-empty string of digits only — no sign, no dot, no exponent.
+   if (!/^\d+$/.test(s)) return { ok: false, error: `${fieldName}: must be a non-negative integer string (no sign, no decimal point)` };
+   // Reject leading zeros except the single digit "0". [S11]
+@@ -765,8 +767,6 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void>
+     if (method === "POST" && path === "/withdraw") {
+       const body       = await readBody(req);
+       const payoutAddr = String(body.payout ?? nodeState.payoutAddress) as Address;
+-      const credit     = await pub.readContract({ address: escrowAddress, abi: ESCROW_ABI, functionName: "providerCredit", args: [payoutAddr] }) as bigint;
+-      if (credit === 0n) return json(res, 400, { error: "no credit to withdraw" } satisfies ApiError);
+ 
+       // Guard: the payout address must match the fixture payout (caller / payout mismatch rejection).
+       // withdraw() sends to msg.sender, so the fixture payoutAccount must be the caller.
+@@ -774,20 +774,34 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void>
+         return json(res, 400, { error: "payout address does not match fixture payout account" } satisfies ApiError);
+       }
+ 
+-      const { hash } = await enqueueWrite(async () => {
++      const withdrawal = await enqueueWrite(async () => {
++        // Credit must be read after prior queued writes, including withdrawals.
++        const credit = await pub.readContract({ address: escrowAddress, abi: ESCROW_ABI, functionName: "providerCredit", args: [payoutAccount.address] }) as bigint;
++        if (credit === 0n) return null;
+         await assertLoopbackChain(); // [S3]
+         const hash    = await makeWallet(payoutAccount).writeContract({ address: escrowAddress, abi: ESCROW_ABI, functionName: "withdraw", args: [] });
+         const receipt = await pub.waitForTransactionReceipt({ hash });
+         requireSuccess(receipt, "withdraw"); // [S4]
+-        return { hash };
++        for (const log of receipt.logs) {
++          if (log.address.toLowerCase() !== escrowAddress.toLowerCase()) continue;
++          try {
++            const decoded = decodeEventLog({ abi: ESCROW_ABI, data: log.data, topics: log.topics });
++            if (decoded.eventName !== "ProviderWithdrawn") continue;
++            const event = decoded.args as { payout: Address; amount: bigint };
++            if (event.payout.toLowerCase() !== payoutAccount.address.toLowerCase()) continue;
++            return { hash, amount: event.amount, payout: event.payout };
++          } catch { /* skip non-matching receipt logs */ }
++        }
++        throw new Error("ProviderWithdrawn event not found in successful withdrawal receipt");
+       });
+-      return json(res, 200, { withdrawn: credit.toString(), payout: payoutAddr, txHash: hash }); // [S10] string
++      if (!withdrawal) return json(res, 400, { error: "no credit to withdraw" } satisfies ApiError);
++      return json(res, 200, { withdrawn: withdrawal.amount.toString(), payout: withdrawal.payout, txHash: withdrawal.hash }); // [S10] event-derived string
+     }
+ 
+     // ── POST /demo/complete — AI call simulation: measure words → settle ──────
+     if (method === "POST" && path === "/demo/complete") {
+       const body      = await readBody(req);
+-      const cr = parseBigInt(String(body.channelId ?? "0"), "channelId", 0n);
++      const cr = parseBigInt(body.channelId ?? "0", "channelId", 0n);
+       if (!cr.ok) return json(res, 400, { error: cr.error } satisfies ApiError);
+       const channelId = cr.value;
+ 
+diff --git a/work/studio-current-09/scripts/e2e-onchain.ts b/outputs/Spondion/app/scripts/e2e-onchain.ts
+index d2e633d..16fa9ea 100644
+--- a/work/studio-current-09/scripts/e2e-onchain.ts
++++ b/outputs/Spondion/app/scripts/e2e-onchain.ts
+@@ -7,11 +7,12 @@
+  *   2. Deploys MockUSDC and SpondionPrepaidEscrow from compiled Foundry artifacts
+  *      directly via viem (contract-level suite).
+  *   3. Starts the demo backend server pointed at that Anvil (port 13001) and
+- *      waits for real /health 200 readiness — FAILS if server doesn't come up.
++ *      waits for /status.ready === true on a second owned Anvil node.
+  *   4. Runs HTTP API suite against the server's own chain state.
+  *
+  * Ports are configurable via env vars for parallel CI use:
+  *   ANVIL_PORT (default 18545)
++ *   SERVER_ANVIL_PORT (default ANVIL_PORT + 1; isolates backend fixture nonces)
+  *   API_PORT   (default 13001)
+  *
+  * Security guarantees:
+@@ -25,6 +26,7 @@
+  */
+ 
+ import { spawn, type ChildProcess } from "child_process";
++import { createServer } from "net";
+ import { readFileSync } from "fs";
+ import { join, dirname } from "path";
+ import { fileURLToPath } from "url";
+@@ -41,9 +43,11 @@ import crypto from "crypto";
+ 
+ const LOOPBACK   = "127.0.0.1";
+ const ANVIL_PORT = Number(process.env["ANVIL_PORT"] ?? 18545);
++const SERVER_ANVIL_PORT = Number(process.env["SERVER_ANVIL_PORT"] ?? ANVIL_PORT + 1);
+ const API_PORT   = Number(process.env["API_PORT"]   ?? 13001);
+ const CHAIN_ID   = 31337;
+ const RPC_URL    = `http://${LOOPBACK}:${ANVIL_PORT}`;
++const API_RPC_URL = `http://${LOOPBACK}:${SERVER_ANVIL_PORT}`;
+ const API_BASE   = `http://${LOOPBACK}:${API_PORT}`;
+ 
+ const __dir = dirname(fileURLToPath(import.meta.url));
+@@ -93,37 +97,62 @@ function loadArtifact(name: string): { abi: unknown[]; bytecode: string } {
+ // ── Readiness helpers (fetch-based — cross-platform) ─────────────────────────
+ 
+ /** Wait for Anvil JSON-RPC to accept connections. Uses fetch, not curl. */
+-async function waitRpcReady(url: string, maxMs = 10_000): Promise<void> {
++async function waitRpcReady(url: string, maxMs = 10_000, proc?: ChildProcess): Promise<void> {
+   const deadline = Date.now() + maxMs;
+   while (Date.now() < deadline) {
++    if (proc && proc.exitCode !== null) throw new Error(`Owned Anvil exited ${proc.exitCode} before readiness`);
+     try {
+       const r = await fetch(url, {
+         method: "POST", headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ jsonrpc: "2.0", method: "eth_chainId", params: [], id: 1 }),
+         signal: AbortSignal.timeout(1000),
+       });
+-      if (r.ok) return;
++      const body = await r.json() as { result?: string };
++      if (r.ok && body.result === "0x7a69") return;
+     } catch { /* not yet */ }
+     await new Promise((r) => setTimeout(r, 100));
+   }
+   throw new Error(`${url} not ready after ${maxMs}ms`);
+ }
+ 
+-/** Wait for HTTP server /health to return 200.  FAILS if the check times out. */
+-async function waitHttpHealthy(healthUrl: string, maxMs = 30_000, proc?: ChildProcess): Promise<void> {
++/** Listening is insufficient: wait until deployments and fixture approvals finish. */
++async function waitHttpReady(statusUrl: string, maxMs = 30_000, proc?: ChildProcess): Promise<void> {
+   const deadline = Date.now() + maxMs;
+   while (Date.now() < deadline) {
+     // Fail fast if the child process died.
+     if (proc && proc.exitCode !== null) {
+-      throw new Error(`Server process exited with code ${proc.exitCode} before /health was ready`);
++      throw new Error(`Server process exited with code ${proc.exitCode} before /status.ready`);
+     }
+     try {
+-      const r = await fetch(healthUrl, { signal: AbortSignal.timeout(1000) });
+-      if (r.ok) return;
++      const r = await fetch(statusUrl, { signal: AbortSignal.timeout(1000) });
++      const status = await r.json() as { ready?: boolean; chainId?: number; rpcUrl?: string };
++      if (r.ok && status.ready === true && status.chainId === CHAIN_ID && status.rpcUrl === API_RPC_URL) return;
+     } catch { /* not yet */ }
+     await new Promise((r) => setTimeout(r, 300));
+   }
+-  throw new Error(`${healthUrl} not healthy after ${maxMs}ms — is the server running?`);
++  throw new Error(`${statusUrl} not ready on the owned backend chain after ${maxMs}ms`);
++}
++
++/** Never attach the suite to an existing service, even on loopback. */
++async function requireFreePort(port: number): Promise<void> {
++  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`Invalid fixture port ${port}`);
++  const socket = createServer();
++  await new Promise<void>((resolve, reject) => {
++    socket.once("error", reject);
++    socket.listen(port, LOOPBACK, resolve);
++  });
++  await new Promise<void>((resolve, reject) => socket.close(error => error ? reject(error) : resolve()));
++}
++
++async function rpcRequest(url: string, method: string, params: unknown[] = []): Promise<unknown> {
++  if (url !== RPC_URL && url !== API_RPC_URL) throw new Error("Owned loopback RPC only");
++  const response = await fetch(url, {
++    method: "POST", headers: { "Content-Type": "application/json" },
++    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
++  });
++  const body = await response.json() as { result?: unknown; error?: unknown };
++  if (!response.ok || body.error) throw new Error(`Fixture RPC ${method} failed: ${JSON.stringify(body.error)}`);
++  return body.result;
+ }
+ 
+ async function blockTimestamp(url: string): Promise<bigint> {
+@@ -329,38 +358,40 @@ async function testSettleUsage(pub: ReturnType<typeof createPublicClient>, escro
+   // Inclusive deadline: block.timestamp == deadline must succeed (F3 fix)
+   console.log("\n=== deadline boundary (inclusive) ===");
+   const nowChain = await blockTimestamp(RPC_URL);
+-  // Set deadline to exactly current chain time
+-  const dlAtNow = nowChain;
++  const dlAtNow = nowChain + 30n;
+   const reqAtNow = randomId();
+   const sigAtNow = await ownerWallet.signTypedData({
+     domain: { name: "SpondionPrepaidEscrow", version: "1", chainId: CHAIN_ID, verifyingContract: escrow },
+     types: VOUCHER_TYPES, primaryType: "UsageVoucher",
+     message: { channelId, requestId: reqAtNow, units: 1n, deadline: dlAtNow },
+   });
+-  // Mine 0 seconds to keep block.timestamp == dlAtNow (same block)
+-  let inclusiveSucceeded = false;
+-  try {
+-    const h = await providerWallet.writeContract({ address: escrow, abi: ESCROW_ABI, functionName: "settleUsage", args: [channelId, reqAtNow, 1n, dlAtNow, sigAtNow] });
+-    const r = await pub.waitForTransactionReceipt({ hash: h });
+-    if (r.status === "success") inclusiveSucceeded = true;
+-  } catch { /* chain timestamp may have advanced — may fail */ }
+-  // If the tx was mined in the same block it will succeed; if timestamp advanced by 1 it may fail.
+-  // We assert it did not throw an UNEXPECTED error (the only acceptable outcome is either success
+-  // or a known boundary-off-by-one when the miner advances time).
+-  pass("inclusive deadline attempt completed without unexpected throw", `settled=${inclusiveSucceeded}`);
++  await rpcRequest(RPC_URL, "evm_setNextBlockTimestamp", [Number(dlAtNow)]);
++  const boundaryHash = await providerWallet.writeContract({
++    address: escrow, abi: ESCROW_ABI, functionName: "settleUsage",
++    args: [channelId, reqAtNow, 1n, dlAtNow, sigAtNow], gas: 200_000n,
++  });
++  const boundaryReceipt = await pub.waitForTransactionReceipt({ hash: boundaryHash });
++  const boundaryBlock = await pub.getBlock({ blockHash: boundaryReceipt.blockHash });
++  assert("boundary transaction block.timestamp equals deadline", boundaryBlock.timestamp === dlAtNow);
++  assert("settlement at inclusive deadline succeeds", boundaryReceipt.status === "success");
++  assert("boundary voucher consumed on chain", await pub.readContract({ address: escrow, abi: ESCROW_ABI, functionName: "isVoucherConsumed", args: [channelId, reqAtNow] }));
+ 
+   // Past deadline must revert
+-  const pastDl  = nowChain - 100n;
++  const pastDl  = dlAtNow;
+   const reqPast = randomId();
+   const sigPast = await ownerWallet.signTypedData({
+     domain: { name: "SpondionPrepaidEscrow", version: "1", chainId: CHAIN_ID, verifyingContract: escrow },
+     types: VOUCHER_TYPES, primaryType: "UsageVoucher",
+     message: { channelId, requestId: reqPast, units: 1n, deadline: pastDl },
+   });
++  await rpcRequest(RPC_URL, "evm_setNextBlockTimestamp", [Number(pastDl + 1n)]);
++  await rpcRequest(RPC_URL, "evm_mine");
++  assert("expired boundary is exactly deadline plus one second", await blockTimestamp(RPC_URL) === pastDl + 1n);
+   let pastReverted = false;
+   try { await providerWallet.writeContract({ address: escrow, abi: ESCROW_ABI, functionName: "settleUsage", args: [channelId, reqPast, 1n, pastDl, sigPast] }); }
+-  catch { pastReverted = true; }
+-  assert("past-deadline voucher reverts", pastReverted);
++  catch (error) { pastReverted = error instanceof Error && error.message.includes("VOUCHER_EXPIRED"); }
++  assert("deadline plus one rejects with VOUCHER_EXPIRED", pastReverted);
++  assert("expired boundary voucher remains unconsumed", !(await pub.readContract({ address: escrow, abi: ESCROW_ABI, functionName: "isVoucherConsumed", args: [channelId, reqPast] })));
+ 
+   // Wrong-chain domain rejection
+   console.log("\n=== wrong-chain domain rejection ===");
+@@ -532,7 +563,7 @@ async function testConservation(pub: ReturnType<typeof createPublicClient>, escr
+     } catch { /* skip */ }
+   }
+   assert("conservation channel opened (event decoded)", cid !== undefined);
+-  cid = cid ?? 0n;
++  if (cid === undefined) throw new Error("Conservation channel event missing");
+   await pub.waitForTransactionReceipt({
+     hash: await ownerWallet.writeContract({ address: escrow, abi: ESCROW_ABI, functionName: "deposit", args: [cid, 100_000n] }),
+   });
+@@ -567,7 +598,8 @@ async function testConservation(pub: ReturnType<typeof createPublicClient>, escr
+   const finalBal  = await pub.readContract({ address: usdc,   abi: ERC20_ABI, functionName: "balanceOf",    args: [escrow] });
+   const finalLiab = await pub.readContract({ address: escrow, abi: ESCROW_ABI, functionName: "totalLiabilities", args: [] });
+   assert("exact conservation after full lifecycle (bal >= liab)", finalBal >= finalLiab, `bal=${finalBal} liab=${finalLiab}`);
+-  pass("conservation: finalLiabilities", `${finalLiab}`);
++  assert("completed fixture lifecycles leave zero liabilities", finalLiab === 0n, `got ${finalLiab}`);
++  assert("completed fixture lifecycles leave zero escrow tokens", finalBal === 0n, `got ${finalBal}`);
+ }
+ 
+ // ── Malformed-input / no-state-change tests ───────────────────────────────────
+@@ -793,13 +825,16 @@ console.log("Contracts: compiled Foundry artifacts");
+ console.log("Signing:   EIP-712 typed-data");
+ 
+ let anvilProc:  ChildProcess | null = null;
++let apiAnvilProc: ChildProcess | null = null;
+ let serverProc: ChildProcess | null = null;
+ 
+ try {
++  if (new Set([ANVIL_PORT, SERVER_ANVIL_PORT, API_PORT]).size !== 3) throw new Error("Fixture ports must be distinct");
++  for (const port of [ANVIL_PORT, SERVER_ANVIL_PORT, API_PORT]) await requireFreePort(port);
+   // 1. Start isolated Anvil
+   console.log(`\n[setup] Starting Anvil on port ${ANVIL_PORT}…`);
+   anvilProc = spawn("anvil", [
+-    "--host", LOOPBACK, "--port", String(ANVIL_PORT), "--chain-id", String(CHAIN_ID),
++    "--host", LOOPBACK, "--port", String(ANVIL_PORT), "--chain-id", String(CHAIN_ID), "--silent",
+   ], { stdio: ["ignore", "pipe", "ignore"] });
+ 
+   // Fail immediately if Anvil exits unexpectedly
+@@ -809,7 +844,7 @@ try {
+     }
+   });
+ 
+-  await waitRpcReady(RPC_URL);
++  await waitRpcReady(RPC_URL, 10_000, anvilProc);
+   console.log("[setup] Anvil ready");
+ 
+   // 2. Deploy contracts
+@@ -817,13 +852,15 @@ try {
+   const pub = createPublicClient({ chain: anvilChain, transport: http(RPC_URL) });
+   const { usdcAddress, escrowAddress } = await deploy(pub);
+ 
+-  // 3. Start demo server pointed at this Anvil
++  // 3. A second owned node isolates backend fixture nonces and time changes.
++  apiAnvilProc = spawn("anvil", ["--host", LOOPBACK, "--port", String(SERVER_ANVIL_PORT), "--chain-id", String(CHAIN_ID), "--silent"], { stdio: "ignore" });
++  await waitRpcReady(API_RPC_URL, 10_000, apiAnvilProc);
+   console.log(`\n[setup] Starting demo server on port ${API_PORT}…`);
+-  serverProc = spawn("bun", ["run", "server/index.ts"], {
++  serverProc = spawn(process.execPath, ["--no-env-file", "--no-install", "server/index.ts"], {
+     cwd: ROOT,
+     env: {
+       ...process.env,
+-      ANVIL_PORT: String(ANVIL_PORT),
++      ANVIL_PORT: String(SERVER_ANVIL_PORT),
+       SERVER_PORT: String(API_PORT),
+     },
+     stdio: ["ignore", "pipe", "pipe"],
+@@ -839,8 +876,8 @@ try {
+     }
+   });
+ 
+-  // Wait for real /health 200 — FAILS if server doesn't come up
+-  await waitHttpHealthy(`${API_BASE}/health`, 45_000, serverProc);
++  await waitHttpReady(`${API_BASE}/status`, 45_000, serverProc);
++  pass("backend status.ready on separate owned chain");
+   console.log("[setup] Demo server ready");
+ 
+   // 4. Run contract-level suites (use E2E's own Anvil + deployed contracts)
+@@ -863,6 +900,7 @@ try {
+ } finally {
+   // Clean up only processes WE launched
+   serverProc?.kill();
++  apiAnvilProc?.kill();
+   anvilProc?.kill();
+   console.log("\n" + "=".repeat(52));
+   console.log(`Results: ${passed} passed, ${failed} failed`);
+diff --git a/server/backend-regression.test.ts b/server/backend-regression.test.ts
+new file mode 100644
+--- /dev/null
++++ b/server/backend-regression.test.ts
+@@ -0,0 +1,203 @@
++/** Real HTTP-to-EVM regressions. Starts and stops only owned loopback fixtures. */
++import { afterAll, beforeAll, describe, expect, test } from "bun:test";
++import { spawn, type ChildProcess } from "node:child_process";
++import { createServer } from "node:net";
++import { fileURLToPath } from "node:url";
++import { createPublicClient, decodeEventLog, http, parseAbi, type Address } from "viem";
++import { anvil } from "viem/chains";
++
++const root = process.env["SPONDION_TEST_APP"] ?? fileURLToPath(new URL("..", import.meta.url));
++const ABI = parseAbi([
++  "function nextChannelId() view returns (uint256)",
++  "function providerCredit(address) view returns (uint256)",
++  "event ProviderWithdrawn(address indexed payout, uint256 amount)",
++]);
++let anvilProcess: ChildProcess | undefined;
++let backendProcess: ChildProcess | undefined;
++let apiBase = "";
++let rpcUrl = "";
++let escrow: Address;
++let payout: Address;
++let channelId = "";
++let pub: ReturnType<typeof createPublicClient>;
++let startupLog = "";
++
++async function freePort(): Promise<number> {
++  const socket = createServer();
++  await new Promise<void>((resolve, reject) => {
++    socket.once("error", reject);
++    socket.listen(0, "127.0.0.1", resolve);
++  });
++  const address = socket.address();
++  if (!address || typeof address === "string") throw Error("No loopback port");
++  await new Promise<void>((resolve, reject) => socket.close(error => error ? reject(error) : resolve()));
++  return address.port;
++}
++
++async function request(path: string, body?: Record<string, unknown>) {
++  if (!apiBase.startsWith("http://127.0.0.1:")) throw Error("Loopback only");
++  const response = await fetch(apiBase + path, {
++    method: body === undefined ? "GET" : "POST",
++    headers: { "Content-Type": "application/json", Origin: "http://127.0.0.1:5173" },
++    body: body === undefined ? undefined : JSON.stringify(body),
++    signal: AbortSignal.timeout(20_000),
++  });
++  return { status: response.status, data: await response.json() as Record<string, any> };
++}
++
++async function rpc(method: string, params: unknown[] = []) {
++  if (!rpcUrl.startsWith("http://127.0.0.1:")) throw Error("Loopback only");
++  const response = await fetch(rpcUrl, {
++    method: "POST", headers: { "Content-Type": "application/json" },
++    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
++    signal: AbortSignal.timeout(1000),
++  });
++  const data = await response.json() as { result?: unknown; error?: unknown };
++  if (data.error) throw Error(JSON.stringify(data.error));
++  return data.result;
++}
++
++beforeAll(async () => {
++  const rpcPort = await freePort();
++  const apiPort = await freePort();
++  rpcUrl = `http://127.0.0.1:${rpcPort}`;
++  apiBase = `http://127.0.0.1:${apiPort}`;
++  anvilProcess = spawn("anvil", ["--host", "127.0.0.1", "--port", String(rpcPort), "--chain-id", "31337", "--silent"], { stdio: "ignore" });
++  for (let tries = 0; ; tries++) {
++    try { if (await rpc("eth_chainId") === "0x7a69") break; } catch { /* starting */ }
++    if (tries > 100) throw Error("Owned Anvil did not start");
++    await Bun.sleep(100);
++  }
++  backendProcess = spawn(process.execPath, ["--no-env-file", "--no-install", "server/index.ts"], {
++    cwd: root, env: { ...process.env, ANVIL_PORT: String(rpcPort), SERVER_PORT: String(apiPort) },
++    stdio: ["ignore", "pipe", "pipe"],
++  });
++  backendProcess.stdout?.on("data", data => { startupLog += data.toString(); });
++  backendProcess.stderr?.on("data", data => { startupLog += data.toString(); });
++  for (let tries = 0; ; tries++) {
++    if (backendProcess.exitCode !== null) throw Error(`Backend exited: ${startupLog.slice(-1200)}`);
++    try {
++      const status = await request("/status");
++      if (status.status === 200 && status.data.ready === true) {
++        expect(status.data.chainId).toBe(31337);
++        expect(status.data.rpcUrl).toBe(rpcUrl);
++        escrow = status.data.escrow as Address;
++        payout = status.data.fixture.payout as Address;
++        break;
++      }
++    } catch { /* starting */ }
++    if (tries > 150) throw Error(`Backend not actually ready: ${startupLog.slice(-1200)}`);
++    await Bun.sleep(100);
++  }
++  pub = createPublicClient({ chain: anvil, transport: http(rpcUrl) });
++  expect(await pub.getChainId()).toBe(31337);
++  const created = await request("/channels", { pricePerUnit: "1000", perCallCap: "10000", lifetimeCap: "100000", initialDeposit: "50000" });
++  expect(created.status).toBe(201);
++  channelId = created.data.channel.channelId;
++}, 40_000);
++
++afterAll(() => {
++  backendProcess?.kill();
++  anvilProcess?.kill();
++});
++
++describe("decimal strings are mandatory before any write", () => {
++  for (const [field, value] of [
++    ["pricePerUnit", 1000], ["perCallCap", 10000],
++    ["lifetimeCap", 9007199254740992], ["initialDeposit", 0],
++  ] as const) {
++    test(`rejects numeric JSON ${field} without opening a channel`, async () => {
++      const before = await pub.readContract({ address: escrow, abi: ABI, functionName: "nextChannelId" });
++      const response = await request("/channels", { pricePerUnit: "1000", perCallCap: "10000", lifetimeCap: "100000", initialDeposit: "0", [field]: value });
++      expect(response.status).toBe(400);
++      expect(await pub.readContract({ address: escrow, abi: ABI, functionName: "nextChannelId" })).toBe(before);
++    });
++  }
++  test("rejects numeric voucher units instead of coercing them", async () => {
++    expect((await request(`/channels/${channelId}/voucher`, { units: 1 })).status).toBe(400);
++  });
++  test("rejects numeric demo channelId without settling", async () => {
++    const before = await pub.getBlockNumber({ cacheTime: 0 });
++    expect((await request("/demo/complete", { channelId: Number(channelId), prompt: "one" })).status).toBe(400);
++    expect(await pub.getBlockNumber({ cacheTime: 0 })).toBe(before);
++  });
++  test("rejects numeric settlement units and deadline without a transaction", async () => {
++    const voucher = await request(`/channels/${channelId}/voucher`, { units: "1" });
++    expect(voucher.status).toBe(200);
++    const before = await pub.getBlockNumber({ cacheTime: 0 });
++    for (const field of ["units", "deadline"] as const) {
++      const response = await request(`/channels/${channelId}/settle`, { ...voucher.data.voucher, [field]: Number(voucher.data.voucher[field]) });
++      expect(response.status).toBe(400);
++    }
++    expect(await pub.getBlockNumber({ cacheTime: 0 })).toBe(before);
++  });
++});
++
++test("concurrent withdrawals use queued credit and successful receipt event amounts", async () => {
++  const settled = await request("/demo/complete", { channelId, prompt: "one" });
++  expect(settled.status).toBe(200);
++  const credit = await pub.readContract({ address: escrow, abi: ABI, functionName: "providerCredit", args: [payout] });
++  expect(credit > 0n).toBe(true);
++  const responses = await Promise.all(Array.from({ length: 12 }, () => request("/withdraw", { payout })));
++  expect(responses.filter(response => response.status === 200)).toHaveLength(1);
++  expect(responses.filter(response => response.status === 400)).toHaveLength(11);
++  const response = responses.find(response => response.status === 200)!;
++  const receipt = await pub.waitForTransactionReceipt({ hash: response.data.txHash });
++  expect(receipt.status).toBe("success");
++  const events = receipt.logs.filter(log => log.address.toLowerCase() === escrow.toLowerCase()).flatMap(log => {
++    try {
++      const decoded = decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
++      return decoded.eventName === "ProviderWithdrawn" ? [decoded] : [];
++    } catch { return []; }
++  });
++  expect(events).toHaveLength(1);
++  const event = events[0]!;
++  expect(response.data.withdrawn).toBe(event.args.amount.toString());
++  expect(response.data.payout.toLowerCase()).toBe(event.args.payout.toLowerCase());
++  expect(event.args.amount).toBe(credit);
++  expect(await pub.readContract({ address: escrow, abi: ABI, functionName: "providerCredit", args: [payout] })).toBe(0n);
++}, 30_000);
++
++test("withdrawal response includes settlements ahead of it in the write queue", async () => {
++  expect((await request("/demo/complete", { channelId, prompt: "one" })).status).toBe(200);
++  expect(await pub.readContract({ address: escrow, abi: ABI, functionName: "providerCredit", args: [payout] })).toBe(1000n);
++  const voucher = await request(`/channels/${channelId}/voucher`, { units: "2" });
++  expect(voucher.status).toBe(200);
++  async function pendingTransaction() {
++    for (let tries = 0; tries < 100; tries++) {
++      const pending = await rpc("eth_getBlockByNumber", ["pending", false]) as { transactions: unknown[] };
++      if (pending.transactions.length) return;
++      await Bun.sleep(20);
++    }
++    throw Error("Expected owned pending transaction");
++  }
++  await rpc("evm_setAutomine", [false]);
++  try {
++    const settlement = request(`/channels/${channelId}/settle`, voucher.data.voucher);
++    await pendingTransaction(); // Settlement is queued and cannot yet be mined.
++    const withdrawal = request("/withdraw", { payout });
++    // Admit the HTTP request while the preceding settlement is still pending.
++    await Bun.sleep(100);
++    await rpc("evm_mine");
++    expect((await settlement).status).toBe(200);
++    await pendingTransaction();
++    await rpc("evm_mine");
++    const response = await withdrawal;
++    expect(response.status).toBe(200);
++    const receipt = await pub.waitForTransactionReceipt({ hash: response.data.txHash });
++    expect(receipt.status).toBe("success");
++    const event = receipt.logs.filter(log => log.address.toLowerCase() === escrow.toLowerCase()).flatMap(log => {
++      try {
++        const decoded = decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
++        return decoded.eventName === "ProviderWithdrawn" ? [decoded] : [];
++      } catch { return []; }
++    });
++    expect(event).toHaveLength(1);
++    expect(event[0]!.args.amount).toBe(3000n); // 1000 prior credit + queued 2 × 1000.
++    expect(response.data.withdrawn).toBe("3000");
++    expect(response.data.withdrawn).toBe(event[0]!.args.amount.toString());
++    expect(response.data.payout.toLowerCase()).toBe(event[0]!.args.payout.toLowerCase());
++  } finally {
++    await rpc("evm_setAutomine", [true]);
++  }
++}, 30_000);
+diff --git a/tsconfig.server.json b/tsconfig.server.json
+new file mode 100644
+--- /dev/null
++++ b/tsconfig.server.json
+@@ -0,0 +1,9 @@
++{
++  "extends": "./tsconfig.json",
++  "compilerOptions": {
++    "types": ["node", "bun"],
++    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.server.tsbuildinfo"
++  },
++  "include": ["server/**/*.ts"],
++  "exclude": []
++}

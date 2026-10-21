@@ -1,0 +1,414 @@
+$ bun run scripts/e2e-onchain.ts
+
+Spondion On-chain E2E Test Suite
+================================================
+RPC: http://127.0.0.1:18545
+API: http://127.0.0.1:13001
+Contracts: compiled Foundry artifacts
+Signing:   EIP-712 typed-data
+
+[setup] Starting Anvil on port 18545 …
+[setup] Anvil ready
+
+=== deployment ===
+  [PASS] chainId is 31337 (got 31337)
+  [PASS] MockUSDC deployed (0x5fbdb2315678afecb367f032d93f642f64180aa3)
+  [PASS] SpondionPrepaidEscrow deployed (0xe7f1725e7734ce288f8367e1bb143e90bb3f0512)
+  [PASS] loopback guard: chainId == 31337
+
+[setup] Starting demo server on port 13001 …
+[demo] [server] Starting Anvil on http://127.0.0.1:18546
+[demo] [server] Spondion backend listening on http://127.0.0.1:13001
+[server] Bootstrapping Anvil node…
+[setup] Demo server ready
+
+=== openChannel + deposit ===
+[demo] [anvil] 
+
+                             _   _
+                            (_) | |
+      __ _   _ __   __   __  _  | |
+     / _` | | '_ \  \ \ / / | | | |
+    | (_| | | | | |  \ V /  | | | |
+     \__,_| |_| |_|   \_/   |_| |_|
+
+    1.7.1 (4072e48705 2026-05-08T07:50:55.527285345Z)
+    https://github.com/foundry-rs/foundry
+
+Available Accounts
+==================
+
+(0) 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (10000.000000000000000000 ETH)
+(1) 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 (10000.000000000000000000 ETH)
+(2) 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC (10000.000000000000000000 ETH)
+(3) 0x90F79bf6EB2c4f870365E785982E1f101E93b906 (10000.000000000000000000 ETH)
+(4) 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 (10000.000000000000000000 ETH)
+(5) 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc (10000.000000000000000000 ETH)
+(6) 0x976EA74026E726554dB657fA54763abd0C3a0aa9 (10000.000000000000000000 ETH)
+(7) 0x14dC79964da2C08b23698B3D3cc7Ca32193d9955 (10000.000000000000000000 ETH)
+(8) 0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f (10000.000000000000000000 ETH)
+(9) 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720 (10000.000000000000000000 ETH)
+
+Private Keys
+==================
+
+(0) 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+(1) 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+(2) 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
+(3) 0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6
+(4) 0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a
+(5) 0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba
+(6) 0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e
+(7) 0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356
+(8) 0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97
+(9) 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
+
+Wallet
+==================
+Mnemonic:          test test test test test test test test test test test junk
+Derivation path:   m/44'/60'/0'/0/
+
+
+Chain ID
+==================
+
+31337
+
+Base Fee
+==================
+
+1000000000
+
+Gas Limit
+==================
+
+30000000
+
+Genesis Timestamp
+==================
+
+1792487081
+
+Genesis Number
+==================
+
+0
+
+[anvil] Listening on 127.0.0.1:18546
+  [PASS] channel balance = DEPOSIT (got 50000)
+  [PASS] channel state Active (got 0)
+  [PASS] totalLiabilities tracks deposit
+
+=== settleUsage (EIP-712) ===
+  [PASS] settle tx mined
+  [PASS] channel balance decreased by 5000 (got 45000)
+  [PASS] channel spent increased by 5000 (got 5000)
+  [PASS] provider credit = 5000 (got 5000)
+  [PASS] UsageSettled event amount == 5000 (got 5000)
+
+=== duplicate rejection ===
+  [PASS] duplicate settle reverts
+
+=== deadline boundary (inclusive) ===
+  [PASS] deadline==now attempt did not throw unexpectedly (succeeded=true)
+  [PASS] past-deadline voucher reverts
+
+=== wrong-chain domain rejection ===
+  [PASS] wrong-chain EIP-712 domain reverts
+
+=== same requestId fresh signature ===
+  [PASS] same requestId with fresh signature reverts
+
+=== cap enforcement ===
+  [PASS] per-call cap exceeded reverts
+
+=== replay after top-up ===
+  [PASS] top-up deposit succeeded
+  [PASS] balance increased by top-up
+
+=== requestClose + grace + finalizeRefund ===
+  [PASS] state is Closing (got 1)
+  [PASS] refundAvailableAt set
+  [PASS] time advanced past grace
+  [PASS] state is Closed (got 2)
+  [PASS] channel balance is 0 after refund (got 0)
+  [PASS] refund confirmed (returned 94000 µUSDC)
+
+=== provider withdraw + ProviderWithdrawn event ===
+[demo] [anvil] eth_chainId
+[anvil] eth_chainId
+[server] Anvil ready
+  [PASS] payout has credit (got 6000)
+  [PASS] ProviderWithdrawn event amount matches credit (decoded=6000 credit=6000)
+[demo] [anvil] eth_chainId
+  [PASS] credit zeroed after withdraw (got 0)
+
+=== multi-op conservation ===
+[demo] [server] Deploying MockUSDC…
+[demo] [anvil] eth_fillTransaction
+eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+
+    Transaction: 0xa80466eca5673147ced2665741ad4cdee181fff900b8aaeeb8c8474163040942
+    Contract created: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+    Gas used: 550134
+
+    Block Number: 1
+    Block Hash: 0xeee1acaf6bb9d0ccf6a60624670e15395db04a7e8f12afac34a4e28a05423e06
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [server] MockUSDC at 0x5fbdb2315678afecb367f032d93f642f64180aa3
+[server] Deploying SpondionPrepaidEscrow…
+[demo] [anvil] eth_fillTransaction
+eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0x443b98f477e56189a4ac2a09784d6866f1d1b6ff4bdf61497cc1dbea4bde1125
+    Contract created: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+    Gas used: 1931390
+
+    Block Number: 2
+    Block Hash: 0x4b8e6c8c119951e67f65ff6bc5fd8263943d111228e889625a1cb7a88b9b3ab1
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [server] Escrow at 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 block 2n
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+  [PASS] contract balance >= totalLiabilities (solvent) (bal=100000 liab=100000)
+[demo] [anvil] eth_sendRawTransaction
+
+    Transaction: 0x15de14b04fb23144f28f07bc4dfcfd027718b69c0ef66b06dde905e857aea504
+    Gas used: 68385
+
+    Block Number: 3
+    Block Hash: 0x1164c5e34badf2cf9cced379b79b4949d57be027172d2e291a1efeecb9ed0b67
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[anvil] 
+    Transaction: 0xbb21a638a8490d16bc5d88579aef132825f7209951e0df1a3cf5fc04f7b637bc
+    Gas used: 51273
+
+    Block Number: 4
+    Block Hash: 0xf18af360b5b1f90d2d0b809fafae5fa4d3b476c043c5dd33f939b751fe8c8d15
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+eth_getTransactionReceipt
+eth_fillTransaction
+eth_estimateGas
+[anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+
+    Transaction: 0x7c669d91a5a950d6a7a7541aff6b13ff86ec76d2d305ce7aafbda4af3a2cebb6
+    Gas used: 46335
+
+    Block Number: 5
+    Block Hash: 0x55c9841a2cb62e6a528e174933e807ea14016d8e392d2d86d930e64436f4a7f0
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[anvil] eth_getTransactionReceipt
+[demo] [server] Deployment complete. Node ready.
+  [PASS] conservation after full lifecycle (totalLiabilities now 0)
+
+=== malformed input / no-state-change ===
+  [PASS] float amount rejected 400 ({"pricePerUnit":"1.5","perCallCap":"1000) (got 400)
+  [PASS] float amount rejected 400 ({"pricePerUnit":"1000","perCallCap":"100) (got 400)
+  [PASS] zero pricePerUnit rejected 400 (got 400)
+  [PASS] negative pricePerUnit rejected 400 (got 400)
+  [PASS] leading-zero amount rejected 400 (got 400)
+  [PASS] perCallCap > lifetimeCap rejected 400 (got 400)
+[demo] [anvil] eth_call
+  [PASS] voucher for nonexistent channel → 404 (got 404)
+  [PASS] settle with missing requestId → 400 (got 400)
+  [PASS] settle with float units → 400 (got 400)
+[demo] [anvil] eth_call
+  [PASS] withdraw with wrong payout address → 400 (got 400)
+  [PASS] demo/complete with float channelId → 400 (got 400)
+
+=== HTTP API path ===
+  [PASS] API /health 200 (got 200)
+  [PASS] API /status 200 ready
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+
+    Transaction: 0xe63524d569e3372abb23c11477a257f4a069d715276fcc1d60581e8adfebe24d
+    Gas used: 213030
+
+    Block Number: 6
+    Block Hash: 0x311006f68660efd8f985d39626c56fe32b61d9a708e7f4e226c64fd11ac042d2
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0x94ce55868180bdff03e6c8dbb3f8b68444fd2d77235b4ba4f86ca0fe9a96557f
+    Gas used: 29223
+
+    Block Number: 7
+    Block Hash: 0x7b2c7926f578245d1659722bfa728d0bae99650eed5eafaa16461c2ce14b161f
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0xa6964bd9648e49aacc2d5f604bc09b91baf848962f3be524e223910900572fc3
+    Gas used: 110627
+
+    Block Number: 8
+    Block Hash: 0x27be529e8dd90b26c76a4986e42e893ac595fa553e82391c0b47017dd3d3337c
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [anvil] eth_call
+  [PASS] API POST /channels 201 (got 201)
+  [PASS] API channel state Active
+  [PASS] API channel balance string (bigint-safe)
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+[demo] [anvil] eth_getBlockByNumber
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_chainId
+  [PASS] API /voucher 200 (got 200)
+  [PASS] signing method EIP-712
+  [PASS] voucher units is string
+[demo] [anvil] eth_getBlockByNumber
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0x93e5eb11b9f853a362841c499c06f1b97d6c6f0c13597a21f7e4ef474e13b32e
+    Gas used: 123488
+
+    Block Number: 9
+    Block Hash: 0xec9a3b95c8e594bcc4819208fd3f8f3fbcca37c18cc4eb5ffc0f284c956cfa36
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[anvil] eth_getTransactionReceipt
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+  [PASS] API /settle 200 (got 200)
+  [PASS] settlement amount = 3000 (decoded from UsageSettled event) (got 3000)
+  [PASS] settlement amount is string
+[demo] [anvil] eth_getBlockByNumber
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+  [PASS] API duplicate settle 400 (got 400)
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_getBlockByNumber
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0x53b2a46e2db4fd070946662e3f4f0c1d462ef7c3fb23ca89467ca9cb48d0a4dc
+    Gas used: 89288
+
+    Block Number: 10
+    Block Hash: 0x54755d4fa1e4aae40d24dece5e82fb823dc137366e701ace8558f023581b9ef5
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[anvil] eth_call
+  [PASS] API /demo/complete 200 (got 200)
+  [PASS] demo/complete units = word count (3) (got 3)
+  [PASS] demo/complete amount decoded from UsageSettled event (got 3000)
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+[demo] [anvil] eth_getLogs
+[demo] [anvil] eth_getBlockByNumber
+[demo] [anvil] eth_getBlockByNumber
+  [PASS] GET /channels 200 (got 200)
+  [PASS] providerCredit values are strings
+  [PASS] settlements have string amounts
+[demo] [anvil] eth_call
+[demo] [anvil] eth_call
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0xcc6ba6b8b4a170c7e6f781406b85a22f39a5bb6bdb6a0db4e2b53428fba0bf53
+    Gas used: 69612
+
+    Block Number: 11
+    Block Hash: 0xb8cc9ddde79e391bec97fe9987bc3e64cedcf2190018fa17fec10c586110a825
+    Block Time: "Tue, 20 Oct 2026 09:04:42 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [anvil] eth_call
+  [PASS] API /close 200 (got 200)
+[demo] [anvil] eth_call
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_getBlockByNumber
+[demo] [anvil] evm_increaseTime
+[demo] [anvil] evm_mine
+[demo] [anvil] 
+    Block Number: 12
+    Block Hash: 0x82681b4f409b2dcd6f43c3e231435843c6273e2fee640c60287e9fd40883b36c
+    Block Time: "Tue, 20 Oct 2026 10:04:44 +0000"
+
+  [PASS] API /skip-time 200 (got 200)
+[demo] [anvil] eth_call
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0xab5755d963a7d173bf2be6d47121a3a5ffb2ff307a886fbf904b5d5faf1192cc
+    Gas used: 56605
+
+    Block Number: 13
+    Block Hash: 0x9866a6247dae0c83ecfa1da7de6cad60f0a833ae027db504f83117efd824b499
+    Block Time: "Tue, 20 Oct 2026 10:04:44 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+[demo] [anvil] eth_call
+  [PASS] API /refund 200 (got 200)
+[demo] [anvil] eth_call
+[demo] [anvil] eth_chainId
+[demo] [anvil] eth_fillTransaction
+eth_estimateGas
+[demo] [anvil] eth_accounts
+[demo] [anvil] eth_sendRawTransaction
+[demo] [anvil] 
+    Transaction: 0x15caeeedc0ec319bc4c09e02ad1cb65d4ec4349392acdbf4d2254b8620891b41
+    Gas used: 56972
+
+    Block Number: 14
+    Block Hash: 0xd6dd934a1330d72033704a43f8e3445425e0b40b70203940e966f807336c2e87
+    Block Time: "Tue, 20 Oct 2026 10:04:44 +0000"
+
+[demo] [anvil] eth_getTransactionReceipt
+  [PASS] API /withdraw 200 or 400 (got 200)
+  [PASS] withdrawn amount is string
+
+================================================
+Results: 65 passed, 0 failed
+================================================

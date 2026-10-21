@@ -1,0 +1,87 @@
+{
+  "verifiedAt": "2026-10-21T03:44:32.836Z",
+  "baseline": "work/studio-current-09",
+  "deliveredApp": "outputs/Spondion/app",
+  "provenance": "Studio-origin project with explicit authorized local backend/E2E repairs. Not represented as wholly Studio-authored.",
+  "localRegressionBefore": {
+    "passed": 0,
+    "failed": 8,
+    "exitCode": 1
+  },
+  "additionalStaleCreditBefore": {
+    "failed": 1,
+    "actualReceiptAmount": "3000",
+    "originalHttpAmount": "1000",
+    "exitCode": 1
+  },
+  "localRegressionsAfter": {
+    "passed": 9,
+    "failed": 0,
+    "expectations": 36,
+    "exitCode": 0
+  },
+  "shippedE2eAfter": {
+    "passed": 103,
+    "failed": 0,
+    "exitCode": 0,
+    "chainIds": [
+      31337,
+      31337
+    ],
+    "distinctOwnedNodes": true,
+    "ports": [
+      19545,
+      19546,
+      14001
+    ],
+    "portsClosedAfterRun": true
+  },
+  "strictBackendTypecheck": {
+    "exitCode": 0,
+    "diagnostics": 0
+  },
+  "tooling": {
+    "bun": "1.4.3",
+    "anvil": "1.7.1",
+    "viem": "2.56.3",
+    "typescript": "7.0.2",
+    "install": "Workspace-only npm cache/install; ignore-scripts; output app node_modules junction to tooling."
+  },
+  "changedFiles": [
+    {
+      "path": "server/index.ts",
+      "originalSha256": "faed503069a9fd16ed27ab0f30215038a94d5f4a849552468952908fa62e6b31",
+      "deliveredSha256": "f1610a4a760408b787884af60be87c438b0b94d3530592971a2bec922b1b7a45",
+      "bytes": 50494,
+      "origin": "Studio09 source with authorized local repair"
+    },
+    {
+      "path": "scripts/e2e-onchain.ts",
+      "originalSha256": "b3785efc9d79a31a65f85d7cbc95053094291ed119f9a90930820fa2444ff1dd",
+      "deliveredSha256": "ea65d171d6def1aa94286493ff616d9f8b81e35ecc5440a67c3c3c94dea5624c",
+      "bytes": 51951,
+      "origin": "Studio09 source with authorized local repair"
+    },
+    {
+      "path": "server/backend-regression.test.ts",
+      "originalSha256": null,
+      "deliveredSha256": "6b0f5c41d35e83caab1f94c5c19bbafec057dcf4630f6ae4a865d13a3ef90343",
+      "bytes": 10152,
+      "origin": "Authorized local regression/config addition"
+    },
+    {
+      "path": "tsconfig.server.json",
+      "originalSha256": null,
+      "deliveredSha256": "cb04483295163950779bf027e31f79e67777417733e829450f66be88a2fce23d",
+      "bytes": 216,
+      "origin": "Authorized local regression/config addition"
+    }
+  ],
+  "safety": {
+    "loopbackOnly": true,
+    "publicChainTransactions": 0,
+    "userWallets": 0,
+    "contractSourceEdits": 0,
+    "evidenceFixtureValues": 0
+  }
+}

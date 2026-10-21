@@ -10,6 +10,8 @@ The demo's AI response and word-count metering are mocked. **Local EIP-712 signa
 
 ## Current status
 
+- **Provider setup** now saves account-scoped integration drafts and generates server settings. Read-only settlement recovery verifies the original finalized Base USDC receipt without submitting another payment. See [setup and recovery](docs/PROVIDER-ONBOARDING.md) and [latest verification](docs/PROVIDER-RELEASE.md).
+
 - Independent local checks passed: **72 Solidity tests, 103 E2E assertions, 9 backend regressions and 25 wallet-validation tests**. The last group tests validation logic; it does not establish a connected-wallet mainnet flow.
 - Merchant checks cover SQLite persistence, 100 concurrent duplicates, SDK-to-HTTP integration, response recovery, unknown settlement and owner isolation. See [release verification](docs/MERCHANT-RELEASE.md) for final results and limitations.
 - The contract source remains unchanged from the Studio export. Final frontend/backend repairs were made locally after Studio AI quota was exhausted; see [source provenance](docs/PROVENANCE.md) and [current evidence](docs/final-verification/). **Final Studio synchronization is pending.**

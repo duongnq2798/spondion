@@ -15,6 +15,7 @@ export const operations = sqliteTable('merchant_operations', {
   errorCode: text('error_code'),
   authorizationId: text('authorization_id'),
   authorizationJson: text('authorization_json'),
+  reconciliationJson: text('reconciliation_json'),
   claimToken: text('claim_token').notNull(),
   phaseExpiresAt: integer('phase_expires_at'),
   createdAt: text('created_at').notNull(),
@@ -33,3 +34,13 @@ export const sandboxLimits = sqliteTable('merchant_sandbox_limits', {
   day: text('day').notNull(),
   count: integer('count').notNull().default(1),
 }, t => [primaryKey({ columns: [t.ownerId, t.day] })]);
+
+/** Metadata drafts only. Runtime credentials and live activation stay server-owned. */
+export const providerProfiles = sqliteTable('merchant_provider_profiles', {
+  ownerId: text('owner_id').primaryKey().notNull(),
+  displayName: text('display_name').notNull(),
+  searchEndpoint: text('search_endpoint').notNull(),
+  payoutAddress: text('payout_address').notNull(),
+  priceAtomic: text('price_atomic').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

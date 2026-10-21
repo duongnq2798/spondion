@@ -10,10 +10,26 @@ export interface Operation {
   unitPriceAtomic: string;
   units: 1;
   transaction: string | null;
+  /** Added only after a read-only finalized-chain reconciliation. Never contains a signature. */
+  reconciliation?: ReconciliationEvidence | null;
   result: { results: SearchResult[] } | null;
   error: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ReconciliationEvidence {
+  network: 'eip155:8453';
+  asset: string;
+  transaction: string;
+  blockHash: string;
+  blockNumber: string;
+  payer: string;
+  recipient: string;
+  amountAtomic: string;
+  nonce: string;
+  checkedAt: string;
+  finality: 'finalized';
 }
 
 export interface SearchResult { title: string; url: string; snippet: string }

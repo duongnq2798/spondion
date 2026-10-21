@@ -26,6 +26,9 @@ built as a grant demo, now extended with a provider API workspace. It has three 
 
 ## Key facts
 
+- Provider onboarding saves non-secret user-scoped drafts only; it must never change operator live configuration. See `docs/PROVIDER-ONBOARDING.md`.
+- Unknown Base x402 payments can be reconciled through a read-only finalized receipt check. Preserve atomic evidence/state persistence and never resubmit settlement in recovery.
+
 - Contract: `contracts/SpondionPrepaidEscrow.sol` (non-upgradeable)
 - Unit tests: 72 Foundry tests in `contracts/test/SpondionPrepaidEscrow.t.sol`
 - All monetary amounts: decimal BigInt strings end-to-end [S10]

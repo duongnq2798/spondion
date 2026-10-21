@@ -55,6 +55,10 @@ There are no automatic transport retries. The first 402 challenge can cause one 
 
 Keep the client instance alive for retries. For process restarts, supply a durable `attemptStore` implementing the exported interface; treat stored payment headers as sensitive, short-lived authorizations and restrict access. Without the original saved state, retrieve the original operation with `findByKey(key)` before taking further action. Never create a new key or fresh authorization merely because a request timed out. Do not run multiple processes against one saved attempt without an external lock; the server's durable claim remains the final execution guard.
 
+## Provider setup and recovery
+
+Provider drafts and read-only settlement recovery are now available. [Provider setup and recovery](PROVIDER-ONBOARDING.md) documents the account-scoped draft API and authenticated `POST /v1/operations/:id/reconcile`. Recovery checks the original finalized Base USDC receipt without submitting another payment. Drafts do not change these single-merchant runtime settings or enable live charges. Operator history reads and recovery remain available when live charging is disabled, provided the merchant API credential remains configured.
+
 ## Validation boundary
 
 Automated tests use real x402 challenge/header helpers and maintained client/server classes with a fake HTTP boundary. Integrated tests send the SDK's actual JSON and payment headers through the Worker handler and durable core into real SQLite. They check completed-result recovery after a lost response, 16- and 128-character request keys, HTTP 409 payload conflicts and HTTP 503 unknown settlement across client restart. Only external facilitator/provider HTTP responses are intercepted in those integrated tests. The signer used by tests emits fake data and never signs with a wallet. No paid external requests or onchain transactions were performed. This establishes local integration behavior, not a successful live Base payment. Recipient ownership, facilitator production access, upstream service and recovery procedures still need a controlled deployment-specific validation before enabling paid operation.

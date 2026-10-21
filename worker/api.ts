@@ -2,6 +2,8 @@ import { createOperationService, OperationError } from '../merchant/core.ts';
 import type { SqlDatabase } from '../merchant/store.ts';
 import type { Operation } from '../merchant/types.ts';
 import { createX402PaymentAdapter, createX402SettlementHeader } from '../merchant/x402.ts';
+import { createProviderProfileService } from '../merchant/provider.ts';
+import { createReconciliationService } from '../merchant/reconcile.ts';
 import { CORPUS_LABEL, createProviderSearch, readBoundedBody, searchDocumentation } from './search.ts';
 
 export interface MerchantEnv {
@@ -50,7 +52,7 @@ async function apiKeyMatches(request: Request, expected: string) {
   return different === 0;
 }
 
-async function body(request: Request): Promise<{ query: string; idempotencyKey: string }> {
+async function readJson(request: Request): Promise<Record<string, unknown>> {
   if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) throw new OperationError('UNSUPPORTED_MEDIA_TYPE', 415, 'Send application/json.');
   let value: unknown;
   try { value = JSON.parse(await readBoundedBody(request, 8192)); }
@@ -59,7 +61,11 @@ async function body(request: Request): Promise<{ query: string; idempotencyKey: 
     throw new OperationError('INVALID_JSON', 400, 'Send a valid JSON request.');
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new OperationError('INVALID_REQUEST', 400, 'Send a query and idempotencyKey.');
-  const input = value as Record<string, unknown>;
+  return value as Record<string, unknown>;
+}
+
+async function body(request: Request): Promise<{ query: string; idempotencyKey: string }> {
+  const input = await readJson(request);
   const key = input.idempotencyKey ?? request.headers.get('Idempotency-Key');
   if (typeof input.query !== 'string' || typeof key !== 'string') throw new OperationError('INVALID_REQUEST', 400, 'Send a query and idempotencyKey.');
   if (request.headers.has('Idempotency-Key') && request.headers.get('Idempotency-Key') !== key) throw new OperationError('IDEMPOTENCY_CONFLICT', 409, 'Body and header request keys must match.');
@@ -96,28 +102,42 @@ export async function handleApi(request: Request, env: MerchantEnv): Promise<Res
     if (sandbox && url.pathname === '/api/merchant/me' && request.method === 'GET') return json({ authenticated: Boolean(identity), user: identity ? { name: name(request) } : null, mode: 'sandbox', liveConfigured: liveConfigured(env), signInUrl: SIGN_IN, corpusLabel: CORPUS_LABEL });
     if (!env.DB) return fail('DATABASE_UNAVAILABLE', 'Workspace storage is not available.', 503);
     if (sandbox && !identity) return fail('AUTHENTICATION_REQUIRED', 'Sign in with ChatGPT to save and view your sandbox operations.', 401);
-    if (paid && !liveConfigured(env)) return fail('LIVE_NOT_CONFIGURED', 'Live payments are not configured. Use the no-payment sandbox.', 503);
+    // Recorded receipts and reconciliation remain available during a payment shutdown.
+    if (paid && !env.SPONDION_MERCHANT_API_KEY) return fail('LIVE_NOT_CONFIGURED', 'Live payments are not configured. Use the no-payment sandbox.', 503);
     if (paid && !await apiKeyMatches(request, env.SPONDION_MERCHANT_API_KEY!)) return fail('AUTHENTICATION_REQUIRED', 'A merchant API credential is required.', 401);
 
     const ownerId = sandbox ? `site:${identity!}` : 'merchant:primary';
-    const payment = paid ? createX402PaymentAdapter({ liveEnabled: true, recipient: env.SPONDION_PAY_TO!, priceAtomic: env.SPONDION_PRICE_ATOMIC!, resourceUrl: env.SPONDION_RESOURCE_URL!, facilitatorUrl: env.SPONDION_FACILITATOR_URL!, ...(env.SPONDION_FACILITATOR_AUTH_HEADER ? { createAuthHeaders: async () => ({ verify: { Authorization: env.SPONDION_FACILITATOR_AUTH_HEADER! }, settle: { Authorization: env.SPONDION_FACILITATOR_AUTH_HEADER! }, supported: { Authorization: env.SPONDION_FACILITATOR_AUTH_HEADER! } }) } : {}) }) : undefined;
-    if (paid && env.SPONDION_RESOURCE_URL !== `${url.origin}/v1/search`) return fail('INVALID_CONFIGURATION', 'Configured payment resource does not match this deployment.', 503);
-    const service = createOperationService({ db: env.DB, mode: paid ? 'live' : 'sandbox', ...(paid ? { unitPriceAtomic: env.SPONDION_PRICE_ATOMIC, payment } : {}), search: paid ? createProviderSearch(env.SPONDION_UPSTREAM_SEARCH_URL!, env.SPONDION_UPSTREAM_API_KEY!) : searchDocumentation });
     const base = sandbox ? '/api/merchant' : '/v1';
+    if (sandbox && url.pathname === base + '/provider') {
+      const profiles = createProviderProfileService(env.DB);
+      return json({ profile: request.method === 'POST' ? await profiles.save(ownerId, await readJson(request)) : await profiles.get(ownerId) });
+    }
+    const reconciliationMatch = paid && /^\/v1\/operations\/([^/]+)\/reconcile$/.exec(url.pathname);
+    if (request.method === 'POST' && reconciliationMatch) {
+      const input = await readJson(request);
+      if (Object.keys(input).length !== 1 || typeof input.transaction !== 'string') return fail('INVALID_REQUEST', 'Send only the transaction hash to inspect.', 400);
+      const operation = await createReconciliationService({ db: env.DB }).reconcile(ownerId, reconciliationMatch[1], input.transaction);
+      return operationResponse(operation, true, true);
+    }
+    const reader = createOperationService({ db: env.DB, search: searchDocumentation });
     if (request.method === 'GET' && url.pathname === base + '/operations') {
       const key = url.searchParams.get('key');
       if (key) {
-        const operation = await service.findByKey(ownerId, key);
+        const operation = await reader.findByKey(ownerId, key);
         return operation ? json({ operation }) : fail('NOT_FOUND', 'Operation not found.', 404);
       }
-      return json({ operations: await service.list(ownerId) });
+      return json({ operations: await reader.list(ownerId) });
     }
     if (request.method === 'GET' && url.pathname.startsWith(base + '/operations/')) {
       const id = url.pathname.slice((base + '/operations/').length);
-      const operation = await service.get(ownerId, id);
+      const operation = await reader.get(ownerId, id);
       return operation ? json({ operation }) : fail('NOT_FOUND', 'Operation not found.', 404);
     }
     if (request.method === 'POST' && url.pathname === base + '/search') {
+      if (paid && !liveConfigured(env)) return fail('LIVE_NOT_CONFIGURED', 'Live payments are not configured. Use the no-payment sandbox.', 503);
+      if (paid && env.SPONDION_RESOURCE_URL !== `${url.origin}/v1/search`) return fail('INVALID_CONFIGURATION', 'Configured payment resource does not match this deployment.', 503);
+      const payment = paid ? createX402PaymentAdapter({ liveEnabled: true, recipient: env.SPONDION_PAY_TO!, priceAtomic: env.SPONDION_PRICE_ATOMIC!, resourceUrl: env.SPONDION_RESOURCE_URL!, facilitatorUrl: env.SPONDION_FACILITATOR_URL!, ...(env.SPONDION_FACILITATOR_AUTH_HEADER ? { createAuthHeaders: async () => ({ verify: { Authorization: env.SPONDION_FACILITATOR_AUTH_HEADER! }, settle: { Authorization: env.SPONDION_FACILITATOR_AUTH_HEADER! }, supported: { Authorization: env.SPONDION_FACILITATOR_AUTH_HEADER! } }) } : {}) }) : undefined;
+      const service = paid ? createOperationService({ db: env.DB, mode: 'live', unitPriceAtomic: env.SPONDION_PRICE_ATOMIC, payment, search: createProviderSearch(env.SPONDION_UPSTREAM_SEARCH_URL!, env.SPONDION_UPSTREAM_API_KEY!) }) : reader;
       const input = await body(request);
       const previous = await service.findByKey(ownerId, input.idempotencyKey);
       if (sandbox && !previous) await admitSandbox(env.DB, ownerId);

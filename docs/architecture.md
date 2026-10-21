@@ -21,6 +21,14 @@ Wallet mode does not poll the local backend. Fixture keys belong only in the loc
 
 The Site now deploys a Worker plus client assets using the existing Sites plugin and a provisioned `DB` binding. Wrangler compatibility is pinned to 2026-05-15 because the installed runtime supports dates only through 2026-05-22; this is a runtime feature pin, not the release date. Existing static version 2 can be redeployed as rollback without deleting the new D1 records. The added SDK/Worker/UI code is local work and remains outside the pending Studio-root synchronization.
 
+## Provider onboarding and settlement recovery
+
+The Merchant Workspace now includes **Provider setup**. `merchant/provider.ts` stores only a signed-in user's non-secret metadata in `merchant_provider_profiles`: service name, public HTTPS endpoint, Base recipient and exact USDC price. `GET/POST /api/merchant/provider` use the same platform identity and same-origin write protection as sandbox operations. Saving a draft never fetches an endpoint, changes global runtime settings, creates credentials or enables payments. The UI keeps unsaved values in memory, clears them on auth loss and generates a server settings template with live payments off. This is a preparation workflow for the existing single-merchant deployment, not a self-service multi-tenant payment gateway.
+
+`merchant/reconcile.ts` handles operator-triggered, read-only `POST /v1/operations/:id/reconcile`. Only a live unknown operation with its saved search result and original verified EIP-3009 payment can be recovered. A fixed Base RPC reader checks the chain, finalized head and canonical successful receipt, then matches official USDC `AuthorizationUsed` and the immediately following `Transfer` against the original payer, nonce, recipient and amount. An atomic compare-and-set records safe evidence in `reconciliation_json`, confirms the original amount and exposes the saved result. Replays return the same proof; mismatches and RPC uncertainty leave the unknown state intact. The endpoint never signs or calls settlement. Operator receipt reads and recovery remain accessible with the merchant credential even while new live charges are disabled.
+
+Additive migration `0001_simple_joystick.sql` creates the profile table and nullable evidence column. It preserves existing operations. Prior Worker version 3 can be redeployed while retaining both additions. See [provider setup and recovery](PROVIDER-ONBOARDING.md) for the HTTP contract and limits.
+
 ## Contract and trust model
 
 `Active → requestClose → Closing → finalizeRefund → Closed`. An active channel accepts deposits and provider settlements. Closing permits settlement strictly before `refundAvailableAt`; refund requires a timestamp at or after it.

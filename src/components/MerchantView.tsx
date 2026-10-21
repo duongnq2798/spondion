@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, Clock3, Code2, Database, FileSearch, Fingerprint, History, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck, Terminal } from "lucide-react";
-import { displayMerchantAmount, getMerchantOperation, getMerchantOperations, getMerchantSession, MerchantApiError, safeResultUrl, searchMerchant, type MerchantOperation, type MerchantSession } from "../lib/merchant-api";
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronRight, CircleAlert, Clock3, Code2, Copy, Database, FileSearch, Fingerprint, History, Loader2, RefreshCw, RotateCcw, Save, Search, ShieldCheck, Store, Terminal } from "lucide-react";
+import { displayMerchantAmount, getMerchantOperation, getMerchantOperations, getMerchantSession, getProviderProfile, MerchantApiError, parseProviderPrice, safeResultUrl, saveProviderProfile, searchMerchant, type MerchantOperation, type MerchantSession, type ProviderProfile } from "../lib/merchant-api";
 import "../merchant.css";
 
 const SIGN_IN_URL = "/signin-with-chatgpt?return_to=%2F";
@@ -25,7 +25,117 @@ function Status({ status }: { status: MerchantOperation["status"] }) {
   return <span className={`merchant-operation-status is-${status}`}><span />{labels[status]}</span>;
 }
 
+function ProviderSetup({ liveConfigured, onAuthError }: { liveConfigured: boolean; onAuthError: (error: unknown) => void }) {
+  const [profile, setProfile] = useState<ProviderProfile | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [searchEndpoint, setSearchEndpoint] = useState("");
+  const [payoutAddress, setPayoutAddress] = useState("");
+  const [price, setPrice] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const generation = useRef(0);
+  const saveController = useRef<AbortController | null>(null);
+
+  function restore(value: ProviderProfile | null): void {
+    setProfile(value);
+    setDisplayName(value?.displayName ?? "");
+    setSearchEndpoint(value?.searchEndpoint ?? "");
+    setPayoutAddress(value?.payoutAddress ?? "");
+    setPrice(value?.priceAtomic ? displayMerchantAmount(value.priceAtomic).replace(/ USDC$/, "") : "");
+  }
+
+  useEffect(() => {
+    const attempt = ++generation.current;
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadFailed(false);
+    setError(null);
+    void getProviderProfile(controller.signal).then((value) => {
+      if (attempt !== generation.current) return;
+      restore(value);
+    }).catch((value: unknown) => {
+      if (attempt !== generation.current) return;
+      setLoadFailed(true);
+      setError(readableError(value));
+      onAuthError(value);
+    }).finally(() => { if (attempt === generation.current) setLoading(false); });
+    return () => { generation.current += 1; controller.abort(); saveController.current?.abort(); };
+  }, [loadAttempt, onAuthError]);
+
+  async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (saving || loading || loadFailed) return;
+    setError(null);
+    setMessage(null);
+    setCopied(false);
+    let priceAtomic: string;
+    try { priceAtomic = parseProviderPrice(price); }
+    catch (value: unknown) { setError(readableError(value)); return; }
+    const attempt = generation.current;
+    const controller = new AbortController();
+    saveController.current = controller;
+    setSaving(true);
+    try {
+      const saved = await saveProviderProfile({ displayName: displayName.trim(), searchEndpoint: searchEndpoint.trim(), payoutAddress: payoutAddress.trim(), priceAtomic }, controller.signal);
+      if (attempt !== generation.current) return;
+      restore(saved);
+      setMessage("Provider draft saved to your workspace. Live activation is a separate operator step.");
+    } catch (value: unknown) {
+      if (attempt !== generation.current) return;
+      setError(readableError(value));
+      onAuthError(value);
+    } finally { if (attempt === generation.current) { setSaving(false); saveController.current = null; } }
+  }
+
+  const complete = Boolean(profile?.searchEndpoint && profile?.payoutAddress && profile?.priceAtomic);
+  const dirty = Boolean(profile && (displayName.trim() !== profile.displayName || searchEndpoint.trim() !== profile.searchEndpoint || payoutAddress.trim() !== profile.payoutAddress || price !== (profile.priceAtomic ? displayMerchantAmount(profile.priceAtomic).replace(/ USDC$/, "") : "")));
+  const settings = profile ? [
+    "# Saved draft: configure these on the server",
+    "SPONDION_LIVE_ENABLED=false",
+    `SPONDION_UPSTREAM_SEARCH_URL=${JSON.stringify(profile.searchEndpoint || "<your HTTPS search endpoint>")}`,
+    `SPONDION_PAY_TO=${JSON.stringify(profile.payoutAddress || "<your Base payout address>")}`,
+    `SPONDION_PRICE_ATOMIC=${JSON.stringify(profile.priceAtomic || "<USDC atoms per search>")}`,
+    "",
+    "# Add merchant, upstream and facilitator credentials",
+    "# through server secret settings. Never in frontend code.",
+  ].join("\n") : "# Save your provider draft to generate settings.";
+
+  async function copySettings(): Promise<void> {
+    try { await navigator.clipboard.writeText(settings); setCopied(true); }
+    catch { setError("Clipboard access is unavailable. You can select and copy the settings below."); }
+  }
+
+  return <div className="merchant-provider-grid">
+    <section className="merchant-card merchant-provider-card" aria-labelledby="provider-profile-title" aria-busy={loading || saving}>
+      <div className="merchant-card-heading"><span className="merchant-card-icon"><Store size={18} /></span><div><h3 id="provider-profile-title">Your provider profile</h3><p>A private setup draft for your search API.</p></div><span className="merchant-method">DRAFT</span></div>
+      {loading && <div className="merchant-provider-loading" role="status"><Loader2 className="merchant-spin" size={18} />Loading your saved setup…</div>}
+      <form onSubmit={(event) => { void save(event); }}>
+        <fieldset disabled={loading || saving || loadFailed}>
+          <div className="merchant-provider-field"><label className="merchant-field-label" htmlFor="provider-name">Service name<span>REQUIRED</span></label><input id="provider-name" value={displayName} onChange={(event) => { setDisplayName(event.target.value); setMessage(null); }} placeholder="Your search API" minLength={2} maxLength={80} autoComplete="off" required /><p>How you identify your API in this workspace.</p></div>
+          <div className="merchant-provider-field"><label className="merchant-field-label" htmlFor="provider-endpoint">Search endpoint<span>OPTIONAL FOR DRAFT</span></label><input id="provider-endpoint" type="url" value={searchEndpoint} onChange={(event) => { setSearchEndpoint(event.target.value); setMessage(null); }} placeholder="https://api.example.com/search" maxLength={500} autoComplete="off" aria-describedby="provider-endpoint-help" /><p id="provider-endpoint-help">Public HTTPS URL only, without query parameters or credentials. Saving does not call your API.</p></div>
+          <div className="merchant-provider-two-fields"><div className="merchant-provider-field"><label className="merchant-field-label" htmlFor="provider-address">Payout address<span>BASE</span></label><input id="provider-address" value={payoutAddress} onChange={(event) => { setPayoutAddress(event.target.value); setMessage(null); }} placeholder="0x…" maxLength={42} spellCheck={false} autoComplete="off" aria-describedby="provider-address-help" /><p id="provider-address-help">Your public Base address. No wallet connection or signature.</p></div><div className="merchant-provider-field"><label className="merchant-field-label" htmlFor="provider-price">Price per search<span>USDC</span></label><input id="provider-price" value={price} onChange={(event) => { setPrice(event.target.value); setMessage(null); }} inputMode="decimal" placeholder="0.001" maxLength={10} autoComplete="off" aria-describedby="provider-price-help" /><p id="provider-price-help">Up to six decimal places, maximum 100 USDC. Leave blank while deciding.</p></div></div>
+          <div className="merchant-provider-save"><button type="submit" className="merchant-primary-button" disabled={!displayName.trim() || displayName.trim().length < 2}>{saving ? <Loader2 className="merchant-spin" size={15} /> : <Save size={15} />}{saving ? "Saving draft…" : "Save provider draft"}</button><span>{profile ? dirty ? "Unsaved changes" : `Saved ${dateLabel(profile.updatedAt)}` : "Only non-secret setup details are stored."}</span></div>
+        </fieldset>
+      </form>
+      {error && <div className="merchant-provider-message is-error" role="alert"><CircleAlert size={16} /><div>{error}{loadFailed && <button type="button" className="merchant-text-button" onClick={() => { setLoadAttempt((value) => value + 1); }}>Retry loading<RefreshCw size={12} /></button>}</div></div>}
+      {message && <div className="merchant-provider-message is-success" role="status"><Check size={16} /><span>{message}</span></div>}
+      <div className="merchant-provider-privacy"><ShieldCheck size={16} /><p>Keep API keys and signing secrets in server settings. This form saves metadata only and leaves real payments off.</p></div>
+    </section>
+
+    <aside className="merchant-provider-side" aria-label="Provider readiness and integration settings">
+      <section className="merchant-card merchant-readiness-card"><div className="merchant-card-heading"><span className="merchant-card-icon"><ShieldCheck size={18} /></span><div><h3>Before your first paid request</h3><p>Saved setup and live configuration are separate.</p></div></div><ol className="merchant-readiness-list"><li className={profile ? "is-complete" : ""}><span>{profile ? <Check size={13} /> : "1"}</span><div><strong>Save your service</strong><p>{profile ? profile.displayName : "Start with a name; finish the rest when ready."}</p></div></li><li className={complete ? "is-complete" : ""}><span>{complete ? <Check size={13} /> : "2"}</span><div><strong>Complete the setup draft</strong><p>HTTPS endpoint, Base payout address and exact price.</p></div></li><li className={liveConfigured ? "is-complete" : ""}><span>{liveConfigured ? <Check size={13} /> : "3"}</span><div><strong>Configure the live deployment</strong><p>{liveConfigured ? "Operator configuration is present. It is independent of this saved draft." : "The operator adds server credentials, facilitator and payment settings."}</p></div></li></ol><div className="merchant-readiness-note"><Clock3 size={15} /><p>{complete ? "Draft complete. This workspace still runs free documentation searches." : "You can use the free request workspace while setup is in progress."} Live configuration does not certify a successful payment.</p></div></section>
+      <section className="merchant-provider-template"><div className="merchant-provider-template-title"><span><Terminal size={16} />Server settings template</span><button type="button" onClick={() => { void copySettings(); }} disabled={!profile} className="merchant-template-copy" aria-label={copied ? "Settings copied" : "Copy server settings"}>{copied ? <Check size={14} /> : <Copy size={14} />}{copied ? "Copied" : "Copy"}</button></div><pre><code>{settings}</code></pre><p>Template uses your last saved draft. Add resource URL, facilitator and credentials using the integration guide.</p><a href={DOCS_URL} target="_blank" rel="noopener noreferrer">View the full integration guide<ArrowUpRight size={13} /></a></section>
+    </aside>
+  </div>;
+}
+
 export default function MerchantView() {
+  const [view, setView] = useState<"requests" | "provider">("requests");
   const [session, setSession] = useState<MerchantSession | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -215,8 +325,8 @@ export default function MerchantView() {
       <section className="merchant-hero" aria-labelledby="merchant-title">
         <div className="merchant-hero-copy">
           <div className="merchant-eyebrow"><span />THE PROVIDER-FIRST WORKSPACE</div>
-          <h1 id="merchant-title">Search requests.<br /><span>Every operation accounted for.</span></h1>
-          <p>Build a clearer payment flow for your API. Try a search, replay the same request, and inspect the saved receipt.</p>
+          <h1 id="merchant-title">{view === "provider" ? "Your API. Your setup." : "Search requests."}<br /><span>{view === "provider" ? "Start with a clear foundation." : "Every operation accounted for."}</span></h1>
+          <p>{view === "provider" ? "Set up your search service, choose a price, and prepare a server integration. Keep control of when payments go live." : "Build a clearer payment flow for your API. Try a search, replay the same request, and inspect the saved receipt."}</p>
           <div className="merchant-hero-notes"><span><ShieldCheck size={14} />No wallet required</span><span><Database size={14} />Saved operation history</span></div>
         </div>
         <div className="merchant-flow" aria-label="Sandbox flow: one search request is saved with a request key, then its result and receipt can be retrieved again.">
@@ -230,11 +340,14 @@ export default function MerchantView() {
 
       <div className="merchant-workspace-intro"><div><p className="section-kicker">MAKE YOUR FIRST REQUEST</p><h2>Your API workspace</h2></div><span className="merchant-environment"><span />Sandbox — no real payments</span></div>
 
+      <nav className="merchant-view-nav" aria-label="API workspace views"><button type="button" aria-pressed={view === "requests"} onClick={() => { setView("requests"); }}><Search size={15} />Requests & receipts</button><button type="button" aria-pressed={view === "provider"} onClick={() => { setView("provider"); }}><Store size={15} />Provider setup<span>NEW</span></button></nav>
+
       {initializing && <div className="merchant-message" role="status"><Loader2 className="merchant-spin" size={17} /><span>Connecting to your sandbox workspace…</span></div>}
       {!initializing && (authRequired || (session && !session.authenticated)) && <div className="merchant-auth-panel"><span className="merchant-auth-icon"><ShieldCheck size={21} /></span><div><strong>Your requests, saved to your workspace.</strong><p>Sign in with ChatGPT to run a search and return to your private operation history.</p></div><a className="merchant-primary-button" href={SIGN_IN_URL} target="_top">Sign in with ChatGPT<ArrowUpRight size={15} /></a></div>}
       {error && <div className="merchant-message is-error" role="alert"><CircleAlert size={18} /><div><strong>{!session ? "Workspace unavailable" : "Request could not be completed"}</strong><p>{error}</p>{!session && <button type="button" className="merchant-text-button" onClick={() => { void connect(); }} disabled={initializing}>Reconnect workspace<RefreshCw size={13} /></button>}{session && !session.authenticated && <a href={SIGN_IN_URL} target="_top">Sign in with ChatGPT<ArrowUpRight size={13} /></a>}</div></div>}
       {notice && <div className="merchant-message is-success" role="status"><Check size={17} /><span>{notice}</span></div>}
 
+      <div hidden={view !== "requests"}>
       <div className="merchant-main-grid">
         <div className="merchant-search-column">
           <section className="merchant-card merchant-search-card" aria-labelledby="search-card-title">
@@ -276,6 +389,10 @@ export default function MerchantView() {
           <section className="merchant-card merchant-receipt" aria-labelledby="merchant-receipt-title"><div className="merchant-receipt-heading"><span className="merchant-card-icon"><Fingerprint size={18} /></span><h3 id="merchant-receipt-title">Operation receipt</h3>{loadingDetail && <Loader2 size={15} className="merchant-spin" />}</div>{selected ? <><div className="merchant-receipt-summary"><span>{selected.mode === "sandbox" ? "No real payment" : "Recorded amount"}</span><strong>{displayMerchantAmount(selected.amountAtomic)}</strong><Status status={selected.status} /></div><dl><div><dt>Operation ID</dt><dd><code>{selected.id}</code></dd></div><div><dt>Request key</dt><dd><code>{selected.idempotencyKey}</code></dd></div><div><dt>Mode</dt><dd>{selected.mode === "sandbox" ? "Sandbox" : "Live"}</dd></div><div><dt>Units · price per unit</dt><dd>{selected.units} · {displayMerchantAmount(selected.unitPriceAtomic)}</dd></div><div><dt>Created</dt><dd>{dateLabel(selected.createdAt)}</dd></div><div><dt>Last updated</dt><dd>{dateLabel(selected.updatedAt)}</dd></div><div><dt>Transaction</dt><dd>{selected.transaction ? <code>{selected.transaction}</code> : selected.mode === "sandbox" ? "None — sandbox operation" : "No transaction recorded"}</dd></div></dl>{selected.error && <p className="merchant-receipt-error">{selected.error}</p>}</> : <div className="merchant-receipt-empty"><Fingerprint size={27} /><p>Select an operation to inspect its request key, result, status, and recorded amount.</p></div>}</section>
         </div>
       </section>
+      </div>
+      <div hidden={view !== "provider"}>
+        {session?.authenticated ? <ProviderSetup liveConfigured={session.liveConfigured} onAuthError={handleAuthError} /> : !initializing && <div className="merchant-card merchant-provider-signed-out"><Store size={27} /><h3>Give your API a workspace.</h3><p>Sign in to save your provider draft and prepare integration settings. Your API credentials stay in server settings.</p></div>}
+      </div>
     </div>
   );
 }

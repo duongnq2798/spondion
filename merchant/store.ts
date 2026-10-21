@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS merchant_operations (
   error_code TEXT,
   authorization_id TEXT UNIQUE,
   authorization_json TEXT,
+  reconciliation_json TEXT,
   claim_token TEXT NOT NULL,
   phase_expires_at INTEGER,
   created_at TEXT NOT NULL,
@@ -53,6 +54,7 @@ export interface OperationRow {
   error_code: string | null;
   authorization_id: string | null;
   authorization_json: string | null;
+  reconciliation_json: string | null;
   claim_token: string;
   phase_expires_at: number | null;
   created_at: string;
@@ -61,7 +63,7 @@ export interface OperationRow {
 
 const COLUMNS = `id, owner_id, idempotency_key, query, mode, phase, unit_price_atomic,
   amount_atomic, result_json, transaction_id, error_code, authorization_id,
-  authorization_json, claim_token, phase_expires_at, created_at, updated_at`;
+  authorization_json, reconciliation_json, claim_token, phase_expires_at, created_at, updated_at`;
 
 export function createOperationStore(db: SqlDatabase) {
   return {
@@ -125,6 +127,17 @@ export function createOperationStore(db: SqlDatabase) {
         WHERE id = ? AND owner_id = ? AND claim_token = ? AND phase = ? AND phase_expires_at > ?
         RETURNING ${COLUMNS}`)
         .bind(phase, errorCode, timestamp, row.id, row.owner_id, row.claim_token, row.phase, nowMs).first<OperationRow>();
+    },
+    async reconcile(row: OperationRow, transaction: string, evidence: string, timestamp: string) {
+      // One statement commits the charge, restored result visibility and audit together.
+      return db.prepare(`UPDATE merchant_operations SET phase = 'succeeded', amount_atomic = unit_price_atomic,
+        transaction_id = ?, reconciliation_json = ?, error_code = NULL, phase_expires_at = NULL, updated_at = ?
+        WHERE id = ? AND owner_id = ? AND claim_token = ? AND phase = 'unknown'
+        AND mode = 'live' AND error_code = 'PAYMENT_OUTCOME_UNKNOWN' AND result_json IS NOT NULL
+        AND authorization_id = ? AND authorization_json = ? AND result_json = ?
+        AND reconciliation_json IS NULL AND transaction_id IS NULL RETURNING ${COLUMNS}`)
+        .bind(transaction, evidence, timestamp, row.id, row.owner_id, row.claim_token,
+          row.authorization_id, row.authorization_json, row.result_json).first<OperationRow>();
     },
   };
 }

@@ -29,6 +29,16 @@ export interface MerchantSession {
   corpusLabel: string;
 }
 
+/** Draft metadata only. Credentials are configured separately by the operator. */
+export interface ProviderDraft {
+  displayName: string;
+  searchEndpoint: string;
+  payoutAddress: string;
+  priceAtomic: string;
+}
+
+export interface ProviderProfile extends ProviderDraft { updatedAt: string }
+
 export class MerchantApiError extends Error {
   constructor(message: string, public readonly status: number, public readonly code: string) {
     super(message);
@@ -56,7 +66,7 @@ function isOperation(value: unknown): value is MerchantOperation {
       record(item) && typeof item.title === "string" && typeof item.url === "string" && typeof item.snippet === "string")));
 }
 
-async function request(path: string, body?: { query: string; idempotencyKey: string }, signal?: AbortSignal): Promise<unknown> {
+async function request(path: string, body?: { query: string; idempotencyKey: string } | ProviderDraft, signal?: AbortSignal): Promise<unknown> {
   const controller = new AbortController();
   const abort = () => controller.abort();
   if (signal?.aborted) controller.abort();
@@ -116,6 +126,34 @@ export async function searchMerchant(query: string, idempotencyKey: string): Pro
   const data = await request("/search", { query, idempotencyKey });
   if (!record(data) || !isOperation(data.operation) || typeof data.replayed !== "boolean") throw invalidResponse();
   return { operation: data.operation, replayed: data.replayed };
+}
+
+function isProviderProfile(value: unknown): value is ProviderProfile {
+  return record(value) && typeof value.displayName === "string" && typeof value.searchEndpoint === "string"
+    && typeof value.payoutAddress === "string" && typeof value.priceAtomic === "string"
+    && (value.priceAtomic === "" || ATOMIC_AMOUNT.test(value.priceAtomic)) && typeof value.updatedAt === "string";
+}
+
+export async function getProviderProfile(signal?: AbortSignal): Promise<ProviderProfile | null> {
+  const data = await request("/provider", undefined, signal);
+  if (!record(data) || !(data.profile === null || isProviderProfile(data.profile))) throw invalidResponse();
+  return data.profile;
+}
+
+export async function saveProviderProfile(draft: ProviderDraft, signal?: AbortSignal): Promise<ProviderProfile> {
+  const data = await request("/provider", draft, signal);
+  if (!record(data) || !isProviderProfile(data.profile)) throw invalidResponse();
+  return data.profile;
+}
+
+/** Empty prices keep a draft incomplete. All non-empty prices use exact USDC atoms. */
+export function parseProviderPrice(value: string): string {
+  if (!value.trim()) return "";
+  if (!/^(0|[1-9]\d{0,2})(\.\d{1,6})?$/.test(value.trim())) throw new Error("Enter a USDC price with up to six decimal places.");
+  const [whole, fraction = ""] = value.trim().split(".");
+  const amount = BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
+  if (amount <= 0n || amount > 100_000_000n) throw new Error("The price must be greater than 0 and at most 100 USDC per search.");
+  return amount.toString();
 }
 
 /** Only HTTPS result URLs without embedded credentials become clickable. */

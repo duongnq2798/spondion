@@ -1,5 +1,7 @@
 # Merchant workspace release — 21 October 2026
 
+This records the initial merchant release. The subsequent onboarding and recovery update is documented in [Provider release verification](PROVIDER-RELEASE.md), including the newer test totals and rollback target.
+
 ## Delivered behavior
 
 - The default provider workspace runs real searches over a fixed Spondion documentation corpus. It saves operations and results in D1, scoped to ChatGPT platform identity. The sandbox charges zero and makes no paid API calls.

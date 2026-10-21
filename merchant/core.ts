@@ -45,12 +45,13 @@ function normalizeQuery(query: string) {
   return query.trim();
 }
 
-function publicOperation(row: OperationRow): Operation {
+export function publicOperation(row: OperationRow): Operation {
   return {
     id: row.id, idempotencyKey: row.idempotency_key, query: row.query, mode: row.mode,
     status: ['authorizing', 'executing', 'settling'].includes(row.phase) ? 'pending' : row.phase as Operation['status'],
     amountAtomic: row.amount_atomic, unitPriceAtomic: row.unit_price_atomic, units: 1,
     transaction: row.transaction_id,
+    ...(row.reconciliation_json ? { reconciliation: JSON.parse(row.reconciliation_json) as Operation['reconciliation'] } : {}),
     result: row.phase === 'succeeded' && row.result_json ? JSON.parse(row.result_json) as Operation['result'] : null,
     error: row.error_code, createdAt: row.created_at, updatedAt: row.updated_at,
   };
@@ -201,7 +202,7 @@ export function createOperationService(options: OperationServiceOptions) {
       id: crypto.randomUUID(), owner_id: ownerId, idempotency_key: key, query, mode,
       phase: mode === 'live' ? 'authorizing' : 'executing', unit_price_atomic: unitPriceAtomic,
       amount_atomic: '0', result_json: null, transaction_id: null, error_code: null,
-      authorization_id: null, authorization_json: null, claim_token: crypto.randomUUID(),
+      authorization_id: null, authorization_json: null, reconciliation_json: null, claim_token: crypto.randomUUID(),
       phase_expires_at: time.ms + timeout, created_at: time.iso, updated_at: time.iso,
     };
     const claimed = await store.claim(row);

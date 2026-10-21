@@ -18,8 +18,9 @@
 
 import { lazy, Suspense, useEffect, useState, useCallback } from "react";
 import WalletView from "./components/WalletView";
+import MerchantView from "./components/MerchantView";
 import { type Channel, type Settlement } from "./types";
-import { ArrowRight, ArrowUpRight, BookOpen, Code2, Cpu, FlaskConical, LayoutDashboard, LockKeyhole, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, Code2, Cpu, FileSearch, FlaskConical, LayoutDashboard, LockKeyhole, ShieldCheck, Wallet } from "lucide-react";
 
 // ── Feature flags ─────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ const DemoView = ENABLE_LOCAL_DEMO
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "demo" | "wallet";
+type Tab = "merchant" | "demo" | "wallet";
 
 export interface AppState {
   channels: Channel[];
@@ -75,7 +76,7 @@ const API = "/api";
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const defaultTab: Tab = ENABLE_LOCAL_DEMO ? "demo" : "wallet";
+  const defaultTab: Tab = ENABLE_LOCAL_DEMO ? "demo" : "merchant";
   const [tab, setTab] = useState<Tab>(defaultTab);
 
   const [demoState, setDemoState] = useState<AppState>({
@@ -154,7 +155,8 @@ export default function App() {
         <div className="sidebar-workspace"><span className="workspace-monogram">S</span><span>Developer workspace<small>Prepaid payments</small></span></div>
         <div className="sidebar-label">WORKSPACE</div>
         <nav className="primary-nav">
-          <button className={`nav-item ${tab === "wallet" ? "active" : ""}`} onClick={() => setTab("wallet")} aria-current={tab === "wallet" ? "page" : undefined} title="Overview"><LayoutDashboard size={18}/><span>Overview</span><span className="nav-active-mark" /></button>
+          <button className={`nav-item ${tab === "merchant" ? "active" : ""}`} onClick={() => setTab("merchant")} aria-current={tab === "merchant" ? "page" : undefined} aria-label="API workspace" title="API workspace"><FileSearch size={18}/><span>API workspace</span>{tab === "merchant" && <span className="nav-active-mark" />}</button>
+          <button className={`nav-item ${tab === "wallet" ? "active" : ""}`} onClick={() => setTab("wallet")} aria-current={tab === "wallet" ? "page" : undefined} aria-label="Overview and Arc wallet" title="Overview and Arc wallet"><LayoutDashboard size={18}/><span>Arc wallet</span>{tab === "wallet" && <span className="nav-active-mark" />}</button>
           {ENABLE_LOCAL_DEMO && <button className={`nav-item ${tab === "demo" ? "active" : ""}`} onClick={() => setTab("demo")} aria-current={tab === "demo" ? "page" : undefined} title="Local sandbox"><FlaskConical size={18}/><span>Local sandbox</span></button>}
         </nav>
         <div className="sidebar-label resources-label">RESOURCES</div>
@@ -169,9 +171,10 @@ export default function App() {
       </aside>
 
       <div className="app-main">
-        <header className="workspace-header"><div className="header-context"><a className="compact-wordmark" href="#">spondion<span>.</span></a><div className="breadcrumb"><span>Workspace</span><span className="breadcrumb-separator">/</span><strong>{tab === "demo" ? "Local sandbox" : "Overview"}</strong></div></div><div className="header-meta"><a className="network-pill" href="https://explorer.arc.io" target="_blank" rel="noopener noreferrer"><span className="arc-network-mark">∩</span>Arc Mainnet<ArrowUpRight size={12}/></a><span className="preview-badge">MVP Preview</span></div></header>
+        <header className="workspace-header"><div className="header-context"><a className="compact-wordmark" href="#">spondion<span>.</span></a><div className="breadcrumb"><span>Workspace</span><span className="breadcrumb-separator">/</span><strong>{tab === "merchant" ? "API workspace" : tab === "demo" ? "Local sandbox" : "Overview"}</strong></div></div><div className="header-meta">{tab !== "merchant" && <a className="network-pill" href="https://explorer.arc.io" target="_blank" rel="noopener noreferrer"><span className="arc-network-mark">∩</span>Arc Mainnet<ArrowUpRight size={12}/></a>}<span className="preview-badge">{tab === "merchant" ? "Developer sandbox" : "MVP Preview"}</span></div></header>
 
         <main className="workspace-main">
+          {tab === "merchant" ? <MerchantView /> : <>
           <div className="page-heading"><div><p className="eyebrow">PAYMENTS WORKSPACE</p><h1>{tab === "demo" ? "Your payment sandbox" : "A smarter way to pay for AI"}</h1><p className="page-description">Prepaid USDC. Clear spending limits. Every request accounted for.</p></div><span className="page-date">Spondion / 001</span></div>
 
           <section className="product-hero" aria-label="How Spondion payments work">
@@ -198,6 +201,7 @@ export default function App() {
         )}
         {tab === "wallet" && <WalletView />}
           </div>
+          </>}
 
           <footer className="workspace-footer"><span>Spondion · Programmable payments for AI services</span><a href="https://studio.arc.io/app/5c8fa387-6104-4492-bce0-d9b93a71b81a" target="_blank" rel="noopener noreferrer">View Arc Studio project<ArrowUpRight size={13}/></a></footer>
         </main>

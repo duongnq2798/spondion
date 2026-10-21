@@ -1,6 +1,8 @@
 # Spondion architecture
 
-Spondion has two interfaces to the same non-upgradeable escrow contract:
+The default **merchant workspace** is React → same-origin Cloudflare Worker → D1. Its sandbox searches Spondion documentation with zero charges. ChatGPT platform user IDs scope stored records; anonymous writes and history access are rejected. The loopback preview uses the Sites starter's local mock identity, never a production authentication cookie.
+
+Two original interfaces remain connected to the non-upgradeable Arc escrow:
 
 | Mode | Execution and signing | Current scope |
 |---|---|---|
@@ -8,6 +10,16 @@ Spondion has two interfaces to the same non-upgradeable escrow contract:
 | Wallet | React/wagmi/viem → connected wallet → configured chain and escrow | Arc Mainnet defaults; writes gated until a reviewed escrow address is configured |
 
 Wallet mode does not poll the local backend. Fixture keys belong only in the local server/E2E code and must never enter browser bundles. Production Studio trace/console forwarding is guarded off; this does not claim all third-party wallet SDK analytics is disabled.
+
+## Merchant operations and payment adapter
+
+`merchant/core.ts` and `store.ts` maintain atomic SQL claims, owner/key uniqueness and globally unique payment authorization IDs. A logical request persists authorization, result and settlement phases. Completed results survive reload/restart. Pending, unknown and failed operations do not expose stored results. Expired authorizing/executing/settling claims become unknown after 120 seconds when read; they never automatically rerun work or settlement. Unknown payments require manual reconciliation before any new payment is considered. An upstream action cannot be promised exactly-once without matching support from that provider.
+
+`worker/api.ts` provides authenticated `/api/merchant` sandbox routes, bounded input, owner isolation, no-store responses and atomic per-user daily admission limits. `db/schema.ts` generates additive D1 migrations under `drizzle/`. No request handler creates tables. `worker/search.ts` indexes a fixed project-doc corpus; configured provider search is a bounded server-side HTTPS request, never a fetch of a URL supplied by the query.
+
+`merchant/x402.ts` uses maintained x402 2.28 SDKs for EOA EIP-3009 exact USDC on Base. It validates recipient/asset/amount/resource, binds each verified proof to its operation and submits settlement once. `sdk/client.ts` retains the logical request and payment bytes across explicit retry/restart, checks its recipient/budget before signing and blocks retries of an unknown outcome. `/v1` is a single-merchant integration guarded by a server-only merchant API credential. Live mode fails closed until recipient, price, facilitator and upstream configuration are all present. No real x402 payment has been executed.
+
+The Site now deploys a Worker plus client assets using the existing Sites plugin and a provisioned `DB` binding. Wrangler compatibility is pinned to 2026-05-15 because the installed runtime supports dates only through 2026-05-22; this is a runtime feature pin, not the release date. Existing static version 2 can be redeployed as rollback without deleting the new D1 records. The added SDK/Worker/UI code is local work and remains outside the pending Studio-root synchronization.
 
 ## Contract and trust model
 

@@ -5,13 +5,15 @@
 ## What this project is
 
 Spondion is a prepaid USDC payment-channel escrow for metered AI/API payments,
-built as a grant demo.  It has two modes:
+built as a grant demo, now extended with a provider API workspace. It has three interfaces:
+
+- **Merchant workspace** (default): React → Worker API → D1. ChatGPT platform identity isolates records. Sandbox searches Spondion documentation with zero charges. Optional `/v1` requires merchant credentials and live x402 exact/USDC/Base configuration. See `docs/MERCHANT-INTEGRATION.md`.
 
 - **Demo mode** (`VITE_ENABLE_LOCAL_DEMO=true`): talks to a local Bun HTTP
   server that launches Anvil, deploys MockUSDC + SpondionPrepaidEscrow, and
   performs EIP-712 signing with fixture keys server-side.  No user wallet needed.
 
-- **Wallet mode** (always in production): user connects their own wallet
+- **Arc wallet tab** (available in production): user connects their own wallet
   (Arc Mainnet chainId 5042, USDC 0x3600…0000).  Write actions are disabled
   until `VITE_ESCROW_ADDRESS` is set after mainnet approval.
 
@@ -57,6 +59,7 @@ bun run contracts:test    # 72+ unit tests
 bun run typecheck         # frontend + backend
 bun run test              # wallet validation
 bun run test:backend      # backend regressions
+bun run test:merchant     # durable core, SDK and Worker API checks
 bun run e2e               # on-chain E2E (starts own Anvil + server)
 bun run build:wallet      # production build (no demo tab)
 ```

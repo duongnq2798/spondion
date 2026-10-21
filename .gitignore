@@ -39,3 +39,8 @@ Thumbs.db
 !.env.example
 .arc-studio/
 work/
+.wrangler/
+.dev.vars*
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

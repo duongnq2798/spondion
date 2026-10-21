@@ -2,9 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
+import { sites } from './scripts/vite/sites-vite-plugin'
 
-export default defineConfig({
-  plugins: [react(), nodePolyfills()],
+export default defineConfig(async () => {
+ const localDemo = process.env.VITE_ENABLE_LOCAL_DEMO === 'true';
+ const { cloudflare } = await import('@cloudflare/vite-plugin');
+ return {
+  plugins: [react(), nodePolyfills(), ...(!localDemo ? [sites(), cloudflare({ viteEnvironment: { name: 'server' }, remoteBindings: false, inspectorPort: false })] : [])],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -35,14 +39,15 @@ export default defineConfig({
     ],
   },
   server: {
-    allowedHosts: true,
-    cors: true,
-    proxy: {
+    host: '127.0.0.1',
+    strictPort: true,
+    proxy: localDemo ? {
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-    },
+    } : undefined,
   },
+ };
 })

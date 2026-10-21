@@ -905,5 +905,7 @@ try {
   console.log("\n" + "=".repeat(52));
   console.log(`Results: ${passed} passed, ${failed} failed`);
   console.log("=".repeat(52));
-  if (failed > 0) process.exit(1);
+  // Bun on Windows can retain RPC/pipe handles after the owned fixture children
+  // have been stopped. This standalone runner must finish on success as well.
+  process.exit(failed > 0 ? 1 : 0);
 }

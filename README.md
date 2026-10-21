@@ -1,4 +1,8 @@
-# Spondion Prepaid Escrow
+# Spondion — API Payments Workspace
+
+Spondion now includes a hosted merchant sandbox, durable search-operation records, result recovery and a TypeScript x402 integration. The public sandbox searches Spondion documentation, charges **0 USDC**, and saves private history after ChatGPT sign-in. It does not call a paid web-search API.
+
+See [the SDK and API guide](docs/MERCHANT-INTEGRATION.md). The optional live route uses exact USDC payments on Base and stays disabled until a provider endpoint, recipient, price and facilitator credentials are configured. The Arc escrow is a separate interface and is not advertised as x402-compatible.
 
 Spondion is a prepaid USDC escrow for metered AI/API requests. An owner funds a channel and signs EIP-712 usage vouchers; the designated provider settles them, and the channel's payout account withdraws its earned credit.
 
@@ -7,26 +11,32 @@ The demo's AI response and word-count metering are mocked. **Local EIP-712 signa
 ## Current status
 
 - Independent local checks passed: **72 Solidity tests, 103 E2E assertions, 9 backend regressions and 25 wallet-validation tests**. The last group tests validation logic; it does not establish a connected-wallet mainnet flow.
+- Merchant checks cover SQLite persistence, 100 concurrent duplicates, SDK-to-HTTP integration, response recovery, unknown settlement and owner isolation. See [release verification](docs/MERCHANT-RELEASE.md) for final results and limitations.
 - The contract source remains unchanged from the Studio export. Final frontend/backend repairs were made locally after Studio AI quota was exhausted; see [source provenance](docs/PROVENANCE.md) and [current evidence](docs/final-verification/). **Final Studio synchronization is pending.**
 - Mainnet deployment, public-network wallet signing and real USDC payments have **not** been completed. No independent professional audit has been performed.
 - Wallet mode defaults to Arc Mainnet, chain 5042. Leave `VITE_ESCROW_ADDRESS` blank until a deployment is approved and verified.
 
 ## Local setup
 
-Install **Node.js 24 or newer**, **Bun 1.4.3**, and **Forge/Anvil** on PATH. Independent verification used Foundry 1.7.1, **Solc 0.8.28**, OpenZeppelin 5.1.0, viem 2.56.3, TypeScript 7.0.2 and Vite 6.0.5. The Foundry configuration uses Paris EVM, optimizer 200 runs. Standard Anvil tests use MockUSDC and do not reproduce Arc's native-USDC gas behavior.
+Install **Node.js 24 or newer**, **Bun 1.4.3**, and **Forge/Anvil** on PATH. Solidity remains **0.8.28**, Paris EVM, optimizer 200, with OpenZeppelin **5.1.0**. The current lockfile uses x402 **2.28.0**, viem **2.57.5** and Vite **6.4.4**. Standard Anvil tests use MockUSDC and do not reproduce Arc's native-USDC gas behavior.
 
 Copy **`.env.example`** to `.env`; keep the escrow address empty. Do not commit `.env`.
 
 ```bash
-npm install --legacy-peer-deps
+bun install --frozen-lockfile
 bun run contracts:build
 bun run contracts:test
 bun run test
+bun run test:merchant
 bun run test:backend
 bun run typecheck
 bun run e2e
 bun run build
 ```
+
+For the hosted workspace preview, run `bunx wrangler d1 migrations apply DB --local` followed by `bun run dev:merchant`. Local sign-in is the Sites starter's loopback-only mock identity; production uses ChatGPT platform identity. Hosted D1 migrations are schema-only and the host provisions `DB`. Keep `.wrangler` and environment secrets out of source control.
+
+`bun run build` creates a Worker in `dist/server` and browser assets in `dist/client`. A static-only deployment does not supply the new API or history. The previous static Site version remains a rollback option and does not delete D1 records.
 
 For the interactive local demo, run `bun run server` in one terminal and `bun run dev:demo` in another. The backend binds to `127.0.0.1:3001`, with Anvil on `127.0.0.1:8545`. Its channel grace period is **3,600 seconds**. The shipped E2E owns two separate loopback chains and cleans them up; `ANVIL_PORT`, `SERVER_ANVIL_PORT` and `API_PORT` must be distinct and free.
 
